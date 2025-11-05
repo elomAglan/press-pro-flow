@@ -26,8 +26,9 @@ const App: React.FC = () => (
       <BrowserRouter>
         <Routes>
           {/* Auth routes */}
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<Signup />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Protected routes */}
@@ -38,6 +39,7 @@ const App: React.FC = () => (
           <Route path="/parametres" element={<Layout><Parametres /></Layout>} />
           <Route path="/rapports" element={<Layout><Rapports /></Layout>} />
           <Route path="/compte" element={<Layout><Compte /></Layout>} />
+
           {/* Fallback */}
           <Route path="*" element={<NotFound />} />
         </Routes>
