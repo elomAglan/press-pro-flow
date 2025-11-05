@@ -1,117 +1,267 @@
-import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, ShoppingBag, CreditCard, Settings, BarChart3, Shirt, Menu, X, LogOut, User } from "lucide-react";
+// Sidebar.jsx (Code COMPLET sans le lien 'Gestion des comptes', sans la barre de recherche, et sans la section utilisateur en bas)
+
+import { useState, useEffect } from "react";
+import { NavLink, useNavigate } from "react-router-dom"; 
+// Import de User, Search retirés
+import { LayoutDashboard, Users, ShoppingBag, CreditCard, Settings, BarChart3, Shirt, Menu, X, LogOut, Bell, ChevronDown, Sun, Moon } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 
-export function Sidebar() {
+// MODIFICATION: Accepter isCollapsed et setIsCollapsed via les props
+export function Sidebar({ isCollapsed, setIsCollapsed }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeNotification, setActiveNotification] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
-  const role = localStorage.getItem("role");
+  // const role = localStorage.getItem("role"); // Le rôle n'est plus utilisé car la section utilisateur est retirée
+
+  // Appliquer le mode sombre
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Clients", href: "/clients", icon: Users },
-    { name: "Commandes", href: "/commandes", icon: ShoppingBag },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, badge: "3" },
+    { name: "Clients", href: "/clients", icon: Users, count: 124 },
+    { name: "Commandes", href: "/commandes", icon: ShoppingBag, badge: "12" },
     { name: "Paiements", href: "/paiements", icon: CreditCard },
-    { name: "Paramètres", href: "/parametres", icon: Settings },
     { name: "Rapports", href: "/rapports", icon: BarChart3 },
+    { name: "Paramètres", href: "/parametres", icon: Settings },
   ];
 
-  if (role === "admin") {
-    navigation.push({ name: "Gestion des comptes", href: "/compte", icon: User });
-  }
-
   const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
+    const sidebarContent = document.querySelector('.sidebar-content');
+    if (sidebarContent) {
+      sidebarContent.classList.add('opacity-0', 'scale-95');
+    }
+    setTimeout(() => {
+      localStorage.clear();
+      navigate("/");
+    }, 300);
   };
 
-  const handleCompteClick = () => {
-    navigate("/compte");
-    setIsOpen(false);
+  const toggleTheme = () => {
+    setDarkMode(!darkMode);
   };
+
+  // Navigation rapide pour mobile
+  const QuickActions = () => (
+    <div className="lg:hidden p-4 border-t border-gray-200 dark:border-gray-700">
+      <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Actions rapides</h3>
+      <div className="grid grid-cols-2 gap-2">
+        <button 
+          onClick={() => {
+            navigate("/commandes/nouveau");
+            setIsOpen(false);
+          }}
+          className="flex items-center justify-center gap-2 p-2 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/30"
+        >
+          <ShoppingBag size={14} />
+          Nouvelle commande
+        </button>
+        <button 
+          onClick={() => {
+            navigate("/clients/nouveau");
+            setIsOpen(false);
+          }}
+          className="flex items-center justify-center gap-2 p-2 text-sm bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg transition-colors hover:bg-green-100 dark:hover:bg-green-900/30"
+        >
+          <Users size={14} />
+          Ajouter client
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <>
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white shadow-md flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="bg-blue-500 text-white p-2 rounded-lg">
+      {/* Mobile Header amélioré */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-2 rounded-xl shadow-md">
             <Shirt className="h-5 w-5" />
           </div>
-          <h1 className="text-lg font-bold text-gray-800">PressPro</h1>
+          <div>
+            <h1 className="text-lg font-bold text-gray-800 dark:text-white">PressPro</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">En ligne</p>
+          </div>
         </div>
-        <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-md hover:bg-gray-100">
-          {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setActiveNotification(!activeNotification)}
+            className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <Bell size={18} className="text-gray-600 dark:text-gray-300" />
+            {activeNotification && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            )}
+          </button>
+          <button 
+            onClick={() => setIsOpen(!isOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            {isOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
-      {/* Sidebar */}
+      {/* Overlay */}
+      {isOpen && (
+        <div 
+          onClick={() => setIsOpen(false)} 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          style={{ animation: 'fade-in 0.2s ease-out' }}
+        ></div>
+      )}
+
+      {/* Sidebar amélioré */}
       <aside className={cn(
-        "fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg transition-transform duration-300 lg:translate-x-0",
-        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        "fixed top-0 left-0 z-50 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col shadow-xl transition-all duration-300 lg:translate-x-0 sidebar-content",
+        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        // Utilise l'état isCollapsed du Layout pour la largeur
+        isCollapsed ? "w-20" : "w-64"
       )}>
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 h-16 border-b border-gray-100 bg-gradient-to-r from-blue-500 to-blue-600">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 text-white">
-            <Shirt className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">PressPro</h1>
-            <p className="text-xs text-blue-100">Gestion Pressing</p>
-          </div>
+        {/* En-tête du sidebar */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-500 to-purple-600">
+          {!isCollapsed && (
+            <div className="flex items-center gap-3 flex-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white shadow-lg">
+                <Shirt className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-lg font-bold text-white">PressPro</h1>
+                <p className="text-xs text-blue-100">Gestion Pressing</p>
+              </div>
+            </div>
+          )}
+          
+          {isCollapsed && (
+            <div className="flex justify-center w-full">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white shadow-lg">
+                <Shirt className="h-6 w-6" />
+              </div>
+            </div>
+          )}
+
+          {/* Bouton collapse pour desktop */}
+          <button
+            // Utilise setIsCollapsed passé en prop
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors"
+          >
+            <ChevronDown 
+              size={16} 
+              className={cn(
+                "transition-transform duration-300", 
+                isCollapsed ? "-rotate-90" : "rotate-90"
+              )} 
+            />
+          </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-4 bg-gray-50">
+        {/* Navigation principale */}
+        <nav className="flex-1 space-y-1 p-4 bg-gray-50 dark:bg-gray-800/50 overflow-y-auto">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all",
+                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all group relative",
                   isActive
-                    ? "bg-blue-100 text-blue-700 shadow-sm"
-                    : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                    ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg border border-blue-100 dark:border-blue-800"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-md",
+                  isCollapsed ? "justify-center" : ""
                 )
               }
               onClick={() => setIsOpen(false)}
             >
-              <item.icon className="h-5 w-5" />
-              {item.name}
+              <item.icon className={cn(
+                "h-5 w-5 transition-transform group-hover:scale-110",
+                isCollapsed ? "" : "flex-shrink-0"
+              )} />
+              
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1">{item.name}</span>
+                  {item.badge && (
+                    <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                      {item.badge}
+                    </span>
+                  )}
+                  {item.count && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded-full">
+                      {item.count}
+                    </span>
+                  )}
+                </>
+              )}
+
+              {/* Tooltip pour le mode collapsed */}
+              {isCollapsed && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
+                  {item.name}
+                  {item.badge && ` (${item.badge})`}
+                </div>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        {/* Compte utilisateur */}
-        <div className="border-t border-gray-200 bg-white p-4">
-          <div
-            onClick={handleCompteClick}
-            className="flex items-center gap-3 mb-3 cursor-pointer rounded-md p-2 hover:bg-blue-50 transition-all"
-          >
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-              <User size={20} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-800">{role === "admin" ? "Admin" : "Comptoir"}</p>
-              <p className="text-xs text-gray-500">{localStorage.getItem("email")}</p>
-            </div>
-          </div>
+        {/* Actions rapides mobile */}
+        <QuickActions />
 
-          <button
-            onClick={handleLogout}
-            className="flex items-center w-full gap-2 text-sm text-gray-600 hover:text-red-600 transition-colors"
-          >
-            <LogOut size={16} />
-            Déconnexion
-          </button>
+        {/* Actions en bas (Thème/Déconnexion) */}
+        <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3">
+          <div className={cn(
+            "flex items-center gap-2 transition-all",
+            isCollapsed ? "justify-center flex-col gap-1" : "justify-between"
+          )}>
+            <button
+              onClick={toggleTheme}
+              className={cn(
+                "p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
+                isCollapsed ? "w-full" : ""
+              )}
+              title={darkMode ? "Mode clair" : "Mode sombre"}
+            >
+              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+
+            {!isCollapsed && (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all group"
+              >
+                <LogOut size={16} className="group-hover:scale-110 transition-transform" />
+                Déconnexion
+              </button>
+            )}
+
+            {isCollapsed && (
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full"
+                title="Déconnexion"
+              >
+                <LogOut size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </aside>
 
-      {isOpen && (
-        <div onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 lg:hidden"></div>
-      )}
+      {/* Styles globaux pour les animations */}
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </>
   );
 }
