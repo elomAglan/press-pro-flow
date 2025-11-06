@@ -29,7 +29,7 @@ const App: React.FC = () => (
       <BrowserRouter>
         <Routes>
           {/* 🔐 Auth routes */}
-          <Route path="/" element={<Signup />} />
+          <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
