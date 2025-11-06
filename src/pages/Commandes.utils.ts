@@ -2,7 +2,6 @@
 // Fichier d'utilitaires (Mock Data & Types)
 // Contient les définitions de types et des données simulées (Mocks)
 // pour les Commandes, Clients et Tarifs.
-// Ce fichier sera remplacé par la logique Firestore (Firebase) plus tard.
 // ====================================================================
 
 // --- 1. Définitions des Types ---
@@ -10,8 +9,8 @@
 /** Type pour un article d'une commande */
 export interface Article {
     id: string;
-    type: string; // Ex: 'Impression', 'Design'
-    service: string; // Ex: 'Affiche A3', 'Logo'
+    type: string; // Ex: 'Impression', 'Design' (Le Linge dans l'exemple Pressing)
+    service: string; // Ex: 'Affiche A3', 'Logo' (Le Service de Lavage dans l'exemple Pressing)
     quantite: number;
     prixUnitaire: number;
 }
@@ -22,13 +21,22 @@ export type StatutCommande = "en_attente" | "en_cours" | "termine" | "annule";
 /** Type de statut pour le paiement */
 export type StatutPaiement = "non_paye" | "partiel" | "paye";
 
-/** Type pour l'objet Commande complet */
+/** Type pour l'objet Commande complet (🚨 MISE À JOUR IMPORTANTE) */
 export interface Commande {
     id: string;
     numero: string;
     clientId: string;
     articles: Article[];
-    total: number;
+    total: number; // Total Brut (avant remise)
+    
+    // 🚨 NOUVEAUX CHAMPS DE COMMANDE REQUIS
+    dateReception: string; // Date de réception du linge (format 'YYYY-MM-DD')
+    dateLivraisonPrevue: string; // Date de livraison prévue (format 'YYYY-MM-DD')
+    pressingId: string; // ID du Pressing / Atelier sélectionné
+    remise: number; // Montant de la remise appliquée (en FCFA ou autre unité monétaire)
+    totalNet: number; // Total après remise (Ceci est le champ qui corrige l'erreur TypeScript)
+    // ------------------------------------
+
     statut: StatutCommande;
     statutPaiement: StatutPaiement;
     montantPaye: number;
@@ -51,6 +59,13 @@ export interface Tarif {
     prix: number;
 }
 
+/** Type pour un Pressing/Atelier */
+export interface Pressing {
+    id: string;
+    nom: string;
+}
+
+
 // --- 2. Données Simulées (Mock Data) ---
 
 // Clients simulés
@@ -60,17 +75,24 @@ export const allClients: Client[] = [
     { id: "c3", nom: "Kouame Patrice", telephone: "70 555 11 22", email: "patrice.kouame@mail.net" },
 ];
 
-// Tarifs simulés
+// Tarifs simulés (Linge & Services)
 export const allTarifs: Tarif[] = [
-    { id: "t1", typeArticle: "Impression", service: "Affiche A3", prix: 500 },
-    { id: "t2", typeArticle: "Impression", service: "Carte de Visite (x100)", prix: 15000 },
-    { id: "t3", typeArticle: "Impression", service: "T-shirt Personnalisé", prix: 8000 },
-    { id: "t4", typeArticle: "Design", service: "Création Logo", prix: 30000 },
-    { id: "t5", typeArticle: "Design", service: "Bannière Web", prix: 10000 },
+    { id: "t1", typeArticle: "Chemise", service: "Lavage + Repassage", prix: 1500 },
+    { id: "t2", typeArticle: "Pantalon", service: "Nettoyage à sec", prix: 2000 },
+    { id: "t3", typeArticle: "Robe de Soirée", service: "Nettoyage à sec spécial", prix: 10000 },
+    { id: "t4", typeArticle: "Couverture", service: "Lavage seul", prix: 4500 },
+    { id: "t5", typeArticle: "Costume", service: "Nettoyage à sec", prix: 6000 },
+];
+
+// 🚨 Pressings simulés (Nouveau)
+export const allPressings: Pressing[] = [
+    { id: "p1", nom: "Atelier Principal (A)" },
+    { id: "p2", nom: "Atelier Secondaire (B)" },
+    { id: "p3", nom: "Partenaire Express" },
 ];
 
 
-// Commandes simulées (pour la démo)
+// Commandes simulées (pour la démo - mise à jour pour inclure les nouveaux champs)
 let commandesData: Commande[] = [
     // Exemple de commande existante pour la démo
     {
@@ -78,14 +100,20 @@ let commandesData: Commande[] = [
         numero: "P-2023-001",
         clientId: "c1",
         articles: [
-            { id: "a1", type: "Impression", service: "Affiche A3", quantite: 50, prixUnitaire: 500 },
-            { id: "a2", type: "Design", service: "Création Logo", quantite: 1, prixUnitaire: 30000 },
+            { id: "a1", type: "Chemise", service: "Lavage + Repassage", quantite: 5, prixUnitaire: 1500 },
+            { id: "a2", type: "Costume", service: "Nettoyage à sec", quantite: 1, prixUnitaire: 6000 },
         ],
-        total: 55000,
+        total: 13500, // 5*1500 + 6000 = 13500
         statut: "en_cours",
         statutPaiement: "partiel",
-        montantPaye: 30000,
+        montantPaye: 10000,
         dateCreation: new Date("2023-11-01"),
+        // Nouveaux champs pour la cohérence
+        dateReception: "2023-11-01",
+        dateLivraisonPrevue: "2023-11-05",
+        pressingId: "p1",
+        remise: 500,
+        totalNet: 13000,
     }
 ];
 
@@ -93,20 +121,16 @@ let commandesData: Commande[] = [
 
 /**
  * Génère un numéro de commande unique (simulé).
- * @returns Le numéro de commande.
  */
 export const generateCommandeNumber = (): string => {
     const today = new Date();
     const year = today.getFullYear();
-    // Simule un incrément basé sur le nombre de commandes
     const nextIndex = commandesData.length + 1; 
     return `P-${year}-${String(nextIndex).padStart(3, '0')}`;
 };
 
 /**
- * Simule l'ajout d'une nouvelle commande (push dans le tableau).
- * @param newCommande La nouvelle commande (sans ID).
- * @returns La commande complète avec un ID généré.
+ * Simule l'ajout d'une nouvelle commande.
  */
 export const addCommande = (newCommande: Omit<Commande, 'id'>): Commande => {
     const id = `cmd${String(commandesData.length + 1).padStart(3, '0')}`;
@@ -120,7 +144,6 @@ export const addCommande = (newCommande: Omit<Commande, 'id'>): Commande => {
  * Récupère toutes les commandes simulées.
  */
 export const getCommandes = (): Commande[] => {
-    // Retourne une copie du tableau pour éviter les modifications directes non intentionnelles
     return [...commandesData]; 
 };
 
@@ -133,14 +156,12 @@ export const getClientById = (clientId: string): Client | undefined => {
 
 // --- 4. Fonctions de Rendu UI (Badges) ---
 
-// Nouveaux types de retour pour éviter les erreurs de syntaxe React/JSX dans les fichiers .ts
 interface BadgeData {
     text: string;
     className: string;
 }
 
-/** * Retourne les données (texte et classes CSS) pour le statut de la commande.
- */
+/** * Retourne les données (texte et classes CSS) pour le statut de la commande. */
 export const getStatutBadge = (statut: StatutCommande): BadgeData => {
     let className = "";
     let text = "";
@@ -162,12 +183,10 @@ export const getStatutBadge = (statut: StatutCommande): BadgeData => {
             text = "Annulée";
             break;
     }
-    // Retourne l'objet simple pour un rendu dans CommandeDetails.tsx
     return { text, className: `inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase ${className}` };
 };
 
-/** * Retourne les données (texte et classes CSS) pour le statut de paiement.
- */
+/** * Retourne les données (texte et classes CSS) pour le statut de paiement. */
 export const getPaiementBadge = (statut: StatutPaiement): BadgeData => {
     let className = "";
     let text = "";
@@ -185,6 +204,5 @@ export const getPaiementBadge = (statut: StatutPaiement): BadgeData => {
             text = "Payé";
             break;
     }
-    // Retourne l'objet simple pour un rendu dans CommandeDetails.tsx
     return { text, className: `inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase ${className}` };
 };
