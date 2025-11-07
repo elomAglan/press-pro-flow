@@ -15,20 +15,20 @@ type Tariff = {
   article: string; 
   service: string; 
   prix: number; 
+  // NOTE: 'unite' est conservée dans le type pour compatibilité mais sera omise dans le formulaire
   unite: string; 
 };
 
 type ActiveTab = 'pressings' | 'tarifs';
 
 // --- MOCK DATA GLOBALE ---
-// L'état initial du pressing est maintenant géré par le composant principal.
-// Nous laissons la valeur par défaut ici pour une meilleure organisation du code.
-// const initialPressing: Pressing | null = { nom: "Net'Express Central", adresse: "Rue de la République, 12345 Ville", telephone: "+33 1 23 45 67 89", email: "contact@netexpress.com", logoBase64: undefined }; 
+const initialPressing: Pressing | null = { nom: "Net'Express Central", adresse: "Rue de la République, 12345 Ville", telephone: "+33 1 23 45 67 89", email: "contact@netexpress.com", logoBase64: undefined }; 
 
 const mockTariffs: Tariff[] = [
-  { id: "t1", article: "Chemise", service: "Lavage simple", prix: 1500, unite: "Pièce" },
+  // Les données mockées sont mises à jour pour ne pas dépendre de l'unité
+  { id: "t1", article: "Chemise", service: "Lavage simple", prix: 1500, unite: "Pièce" }, // L'unité sera ignorée dans l'affichage
   { id: "t2", article: "Pantalon", service: "Repassage", prix: 1000, unite: "Pièce" },
-  { id: "t3", article: "Robe de soirée", service: "Lavage à sec", prix: 5000, unite: "Pièce" },
+  { id: "t3", article: "Robe de soirée", service: "Lavage avec teinture", prix: 5000, unite: "Pièce" },
 ];
 
 // --- UTILITAIRES & COMPOSANTS FONDATIONNELS ---
@@ -80,7 +80,7 @@ const Dialog: React.FC<{isOpen: boolean, onClose: () => void, children: React.Re
 };
 
 // =================================================================================
-// COMPOSANT 1/2 : GestionPressings
+// COMPOSANT 1/2 : GestionPressings (inchangé, sauf l'état maintenant dans le parent)
 // =================================================================================
 interface GestionPressingsProps {
   pressing: Pressing | null;
@@ -89,6 +89,7 @@ interface GestionPressingsProps {
 
 const GestionPressings: React.FC<GestionPressingsProps> = ({ pressing, setPressing }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // Utilisation de l'état local pour le formulaire de modification
   const [formData, setFormData] = useState<Pressing>({ nom: "", adresse: "", telephone: "", email: "" });
 
   const isEditing = !!pressing;
@@ -100,8 +101,10 @@ const GestionPressings: React.FC<GestionPressingsProps> = ({ pressing, setPressi
 
   const handleOpenDialog = useCallback(() => {
     if (pressing) {
+        // Initialiser formData avec les valeurs du pressing si on modifie
         setFormData(pressing);
     } else {
+        // Réinitialiser si on ajoute
         setFormData({ nom: "", adresse: "", telephone: "", email: "", logoBase64: undefined });
     }
     setIsDialogOpen(true);
@@ -206,7 +209,6 @@ const GestionPressings: React.FC<GestionPressingsProps> = ({ pressing, setPressi
                 </button>
                 <button
                     onClick={handleOpenDialog}
-                    // Style de bouton principal (bleu) pour la modification
                     className="px-4 py-2 rounded-lg font-bold text-white transition duration-300 shadow-md bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
                 >
                     <Pencil className="h-4 w-4" /> Modifier le Profil
@@ -214,7 +216,7 @@ const GestionPressings: React.FC<GestionPressingsProps> = ({ pressing, setPressi
             </div>
         </Card>
       ) : (
-        // --- AFFICHAGE DE L'ÉTAT VIDE ---
+        // --- AFFICHAGE DE L'ÉTAT VIDE (inchangé) ---
         <Card>
             <div className="text-center p-10 space-y-4">
                 <Factory className="h-10 w-10 text-gray-400 mx-auto" />
@@ -232,7 +234,7 @@ const GestionPressings: React.FC<GestionPressingsProps> = ({ pressing, setPressi
         </Card>
       )}
 
-      {/* Modal (Utilisé pour Ajouter/Modifier) */}
+      {/* Modal (Utilisé pour Ajouter/Modifier) - Inchangé */}
       <Dialog isOpen={isDialogOpen} onClose={resetDialog} title={isEditing ? "Modifier le Profil" : "Ajouter mon Pressing"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           
@@ -302,7 +304,7 @@ const GestionPressings: React.FC<GestionPressingsProps> = ({ pressing, setPressi
 
 
 // =================================================================================
-// COMPOSANT 2/2 : GestionTarifs (Conditionné par l'existence du Pressing)
+// COMPOSANT 2/2 : GestionTarifs (MODIFIÉ)
 // =================================================================================
 interface GestionTarifsProps {
     isPressingConfigured: boolean;
@@ -312,9 +314,23 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
   const [tariffs, setTariffs] = useState<Tariff[]>(mockTariffs);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTariff, setEditingTariff] = useState<Tariff | null>(null);
-  const [formData, setFormData] = useState<Omit<Tariff, 'id'>>({ article: "", service: "", prix: 0, unite: "Pièce" });
   
-  // Si le pressing n'est pas configuré, on affiche un message d'erreur
+  // Omet 'unite' du formulaire car elle n'est plus demandée, mais est conservée dans l'objet Tariff avec une valeur par défaut
+  const [formData, setFormData] = useState<Omit<Tariff, 'id' | 'unite'> & { unite: string }>({ 
+      article: "", 
+      service: "", 
+      prix: 0, 
+      unite: "Pièce" // Valeur par défaut pour l'objet Tariff, non affichée dans le form
+  });
+  
+  // SERVICES MIS À JOUR
+  const availableServices = [
+    "Lavage simple", 
+    "Lavage avec teinture", 
+    "Lavage avec Repassage"
+  ];
+
+  // Si le pressing n'est pas configuré, on affiche un message d'erreur (inchangé)
   if (!isPressingConfigured) {
     return (
         <Card>
@@ -337,12 +353,14 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.article || !formData.service || formData.prix <= 0 || !formData.unite) {
+    // La vérification de 'unite' est retirée car elle est maintenant gérée par défaut
+    if (!formData.article || !formData.service || formData.prix <= 0) {
       showToast("Erreur", "Veuillez remplir tous les champs correctement.", true);
       return;
     }
 
     if (editingTariff) {
+        // Assurez-vous que l'unité est conservée (même si elle est "Pièce" par défaut)
       setTariffs(tariffs.map(t => t.id === editingTariff.id ? { ...t, ...formData } : t));
       showToast("Tarif modifié", `Le tarif pour "${formData.article}" a été mis à jour.`);
     } else {
@@ -374,14 +392,14 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
     <div className="space-y-6">
       <div className="flex justify-end">
         <button
-          onClick={() => { setEditingTariff(null); setFormData({ article: "", service: "", prix: 0, unite: "Pièce" }); setIsDialogOpen(true); }}
+          onClick={() => { resetDialog(); setIsDialogOpen(true); }} // Utiliser resetDialog pour une réinitialisation propre
           className="px-6 py-2 rounded-lg font-semibold text-white transition duration-300 shadow-md bg-green-600 hover:bg-green-700 flex items-center gap-2"
         >
           <Plus className="h-4 w-4" /> Ajouter un Tarif
         </button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards (inchangées) */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="hover:shadow-xl border-l-4 border-green-500">
           <div className="flex items-center justify-between">
@@ -403,7 +421,7 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
         </Card>
       </div>
 
-      {/* Table */}
+      {/* Table (Colonne Unité retirée) */}
       <Card title="Liste des Tarifs Article/Service">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -411,15 +429,14 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Article</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Prix</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Unité</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Prix (Unité)</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {tariffs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-center italic">Aucun tarif n'est enregistré.</td>
+                  <td colSpan={4} className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-center italic">Aucun tarif n'est enregistré.</td>
                 </tr>
               ) : (
                 tariffs.map((tariff) => (
@@ -428,10 +445,10 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{tariff.service}</td>
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100 text-right">
                         <div className="flex items-center justify-end gap-1">
-                            {tariff.prix.toLocaleString('fr-FR')} <Euro className="h-3 w-3 text-gray-500 dark:text-gray-400"/>
+                            {/* Affichage de l'unité si elle existe, ou "Pièce" par défaut, sans la colonne dédiée */}
+                            {(tariff.prix / 100).toFixed(2)}€ / {tariff.unite} 
                         </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{tariff.unite}</td>
                     
                     <td className="px-6 py-4 text-right text-sm font-medium">
                         <div className="flex justify-end gap-2">
@@ -451,7 +468,7 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
         </div>
       </Card>
 
-      {/* Modal Tarifs */}
+      {/* Modal Tarifs (Champs Service et Prix ajustés) */}
       <Dialog isOpen={isDialogOpen} onClose={resetDialog} title={editingTariff ? "Modifier le Tarif" : "Ajouter un Tarif"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -475,17 +492,16 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
                 className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
               >
                 <option value="">Sélectionner un service</option>
-                <option>Lavage simple</option>
-                <option>Lavage à sec</option>
-                <option>Repassage</option>
-                <option>Nettoyage intensif</option>
+                {/* Services MIS À JOUR */}
+                {availableServices.map(service => (
+                    <option key={service} value={service}>{service}</option>
+                ))}
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Prix (en devise locale)</label>
+          <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Prix (en devise locale - par Pièce par défaut)</label>
               <input
                 type="number"
                 value={formData.prix === 0 ? "" : formData.prix}
@@ -495,22 +511,9 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
                 min="1"
                 className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
               />
-            </div>
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Unité de mesure</label>
-              <select
-                value={formData.unite}
-                onChange={(e) => setFormData({ ...formData, unite: e.target.value })}
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-              >
-                <option>Pièce</option>
-                <option>kg</option>
-                <option>m²</option>
-                <option>Heure</option>
-              </select>
-            </div>
           </div>
+
+          {/* Le champ UNITE DE MESURE a été RETIRÉ ici */}
 
           <button type="submit" className="w-full mt-6 px-4 py-2 rounded-lg font-bold text-white transition duration-300 shadow-md bg-green-600 hover:bg-green-700">
             {editingTariff ? "Sauvegarder le Tarif" : "Ajouter le Tarif"}
@@ -526,8 +529,6 @@ const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) =
 // COMPOSANT PRINCIPAL (ParametresPressing) - Gère la navigation et l'état global
 // =================================================================================
 export default function ParametresPressing() {
-  // L'état du pressing est maintenant géré ici
-  const initialPressing: Pressing | null = { nom: "Net'Express Central", adresse: "Rue de la République, 12345 Ville", telephone: "+33 1 23 45 67 89", email: "contact@netexpress.com", logoBase64: undefined }; 
   const [pressing, setPressing] = useState<Pressing | null>(initialPressing); 
   const [activeTab, setActiveTab] = useState<ActiveTab>('pressings'); 
   
@@ -541,10 +542,8 @@ export default function ParametresPressing() {
   const renderContent = () => {
     switch (activeTab) {
       case 'pressings':
-        // Passe l'état et le setter au composant
         return <GestionPressings pressing={pressing} setPressing={setPressing} />;
       case 'tarifs':
-        // Passe la condition d'existence du pressing au composant
         return <GestionTarifs isPressingConfigured={isPressingConfigured} />;
       default:
         return <GestionPressings pressing={pressing} setPressing={setPressing} />;
@@ -567,7 +566,6 @@ export default function ParametresPressing() {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
             
-            // Logique pour désactiver l'onglet si le pressing n'est pas configuré
             const isDisabled = tab.id === 'tarifs' && !isPressingConfigured;
 
             return (
