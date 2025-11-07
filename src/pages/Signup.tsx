@@ -2,7 +2,7 @@ import { useState, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Shield, Loader2 } from "lucide-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
@@ -61,7 +61,7 @@ const Signup: React.FC = () => {
 
           {/* COLONNE VISUELLE */}
           <div
-            className="md:w-1/3 p-8 relative flex items-center justify-center text-white"
+            className="md:w-[45%] p-12 relative flex items-center justify-center text-white"
             style={{
               backgroundImage: "url('/machine a laver.jpg')",
               backgroundSize: "cover",
@@ -70,13 +70,15 @@ const Signup: React.FC = () => {
           >
             <div className="absolute inset-0 bg-blue-800 opacity-80"></div>
             <div className="relative z-10 text-center">
-              <div className="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/30">
-                <Shield className="w-10 h-10 text-white" />
+              <div className="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/30">
+                <Shield className="w-12 h-12 text-white" />
               </div>
-              <h1 className="text-3xl font-extrabold mb-2 tracking-wide">Créer un compte</h1>
+              <h1 className="text-4xl font-extrabold mb-3 tracking-wide">Créer un compte</h1>
               <p className="text-blue-200 text-sm">Accédez à votre plateforme de blanchisserie.</p>
             </div>
           </div>
+
+
 
           {/* FORMULAIRE */}
           <div className="md:w-2/3 p-8 sm:p-10">
