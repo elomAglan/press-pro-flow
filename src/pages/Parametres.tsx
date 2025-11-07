@@ -1,25 +1,39 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, Pencil, Trash2, Home, Mail, Phone, MapPin, CheckCircle2, Shirt, Tag, Briefcase } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Plus, Pencil, Trash2, Mail, Phone, MapPin, Tag, Euro, Ruler, Factory, User, Edit2, Zap } from 'lucide-react';
 
-// --- Types ---
+// --- TYPES GLOBALES ---
 type Pressing = {
-  id: string;
   nom: string;
   adresse: string;
   telephone: string;
   email: string;
+  logoBase64?: string; // Utilisé pour la simulation d'upload
 };
 
-type ActiveTab = 'pressings' | 'linge' | 'tarifs' | 'services';
+type Tariff = {
+  id: string;
+  article: string; 
+  service: string; 
+  prix: number; 
+  unite: string; 
+};
 
-// --- Mock Data ---
-const mockPressings: Pressing[] = [
-  { id: "1", nom: "Net'Express Dakar", adresse: "Rue 42, Liberté VI, Dakar", telephone: "+221 77 123 45 67", email: "dakar@netexpress.com" },
-  { id: "2", nom: "Clean Pro Abidjan", adresse: "Boulevard de Marseille, Zone 4", telephone: "+225 07 00 98 76 54", email: "abidjan@cleanpro.ci" },
-  { id: "3", nom: "La Maison du Propre", adresse: "Avenue du 2 Février, Lomé", telephone: "+228 90 11 22 33", email: "contact@lamaisondupropre.tg" },
+type ActiveTab = 'pressings' | 'tarifs';
+
+// --- MOCK DATA GLOBALE ---
+// L'état initial du pressing est maintenant géré par le composant principal.
+// Nous laissons la valeur par défaut ici pour une meilleure organisation du code.
+// const initialPressing: Pressing | null = { nom: "Net'Express Central", adresse: "Rue de la République, 12345 Ville", telephone: "+33 1 23 45 67 89", email: "contact@netexpress.com", logoBase64: undefined }; 
+
+const mockTariffs: Tariff[] = [
+  { id: "t1", article: "Chemise", service: "Lavage simple", prix: 1500, unite: "Pièce" },
+  { id: "t2", article: "Pantalon", service: "Repassage", prix: 1000, unite: "Pièce" },
+  { id: "t3", article: "Robe de soirée", service: "Lavage à sec", prix: 5000, unite: "Pièce" },
 ];
 
-// --- Card Component (Dark Mode Support) ---
+// --- UTILITAIRES & COMPOSANTS FONDATIONNELS ---
+
+// Card Component (Support Dark Mode)
 interface CardProps { children: React.ReactNode; className?: string; title?: string; }
 const Card: React.FC<CardProps> = ({ children, className = "", title }) => (
   <div className={`rounded-xl bg-white dark:bg-gray-800 shadow-lg border border-gray-100 dark:border-gray-700 p-6 ${className}`}>
@@ -32,15 +46,14 @@ const Card: React.FC<CardProps> = ({ children, className = "", title }) => (
   </div>
 );
 
-// --- Toast / Notification ---
+// Toast / Notification 
 const showToast = (title: string, description: string, isDestructive = false) => {
   console.log(`[TOAST] ${title}: ${description}`);
-  // Remplacement de window.alert par une simple alerte pour l'environnement Canvas
   alert(`${title}\n${description}`);
 };
 
-// --- Modal / Dialog (Dark Mode Support) ---
-const PressingDialog: React.FC<{isOpen: boolean, onClose: () => void, children: React.ReactNode, title: string}> = ({ isOpen, onClose, children, title }) => {
+// Modal / Dialog (Support Dark Mode)
+const Dialog: React.FC<{isOpen: boolean, onClose: () => void, children: React.ReactNode, title: string}> = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 p-4" onClick={onClose}>
@@ -66,25 +79,55 @@ const PressingDialog: React.FC<{isOpen: boolean, onClose: () => void, children: 
   );
 };
 
-// --- Main Component ---
-export default function ParametresPressing() {
-  const [pressings, setPressings] = useState<Pressing[]>(mockPressings);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('pressings'); // Nouvelle gestion de la tabulation
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPressing, setEditingPressing] = useState<Pressing | null>(null);
-  const [formData, setFormData] = useState({ nom: "", adresse: "", telephone: "", email: "" });
+// =================================================================================
+// COMPOSANT 1/2 : GestionPressings
+// =================================================================================
+interface GestionPressingsProps {
+  pressing: Pressing | null;
+  setPressing: (p: Pressing | null) => void;
+}
 
-  const tabs = [
-    { id: 'pressings', name: 'Pressings', icon: Home },
-    { id: 'linge', name: 'Articles (Linge)', icon: Shirt },
-    { id: 'tarifs', name: 'Tarifs', icon: Tag },
-    { id: 'services', name: 'Services', icon: Briefcase },
-  ];
+const GestionPressings: React.FC<GestionPressingsProps> = ({ pressing, setPressing }) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState<Pressing>({ nom: "", adresse: "", telephone: "", email: "" });
+
+  const isEditing = !!pressing;
+
+  const resetDialog = useCallback(() => { 
+    setIsDialogOpen(false); 
+    setFormData({ nom: "", adresse: "", telephone: "", email: "", logoBase64: undefined }); 
+  }, []);
+
+  const handleOpenDialog = useCallback(() => {
+    if (pressing) {
+        setFormData(pressing);
+    } else {
+        setFormData({ nom: "", adresse: "", telephone: "", email: "", logoBase64: undefined });
+    }
+    setIsDialogOpen(true);
+  }, [pressing]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        showToast("Erreur Fichier", "Veuillez sélectionner un fichier image valide.", true);
+        e.target.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, logoBase64: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nom || !formData.adresse || !formData.telephone || !formData.email) {
-      showToast("Erreur", "Tous les champs sont requis.", true);
+      showToast("Erreur", "Le nom, l'adresse, le téléphone et l'e-mail sont requis.", true);
       return;
     }
     if (!formData.email.includes('@')) {
@@ -92,129 +135,310 @@ export default function ParametresPressing() {
       return;
     }
 
-    if (editingPressing) {
-      setPressings(pressings.map(p => p.id === editingPressing.id ? { ...p, ...formData } : p));
-      showToast("Pressing modifié", `Le pressing "${formData.nom}" a été mis à jour.`);
-    } else {
-      const newPressing: Pressing = { id: String(pressings.length + 1), ...formData };
-      setPressings([...pressings, newPressing]);
-      showToast("Pressing ajouté", `Le nouveau pressing "${formData.nom}" a été créé avec succès.`);
+    setPressing(formData);
+    showToast(isEditing ? "Profil modifié" : "Pressing créé", `Le profil "${formData.nom}" a été mis à jour.`);
+    resetDialog();
+  };
+
+  const handleDelete = useCallback(() => {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le profil de votre pressing ? Cette action est irréversible.`)) return; 
+    setPressing(null);
+    showToast("Profil supprimé", `Le profil de l'établissement a été supprimé.`, true);
+  }, [setPressing]);
+
+  const dataFields: { key: keyof Pressing, label: string, icon: React.ElementType, type: string, required: boolean }[] = [
+    { key: 'adresse', label: 'Adresse Complète', icon: MapPin, type: 'text', required: true },
+    { key: 'telephone', label: 'Numéro de Téléphone', icon: Phone, type: 'tel', required: true },
+    { key: 'email', label: 'Adresse E-mail', icon: Mail, type: 'email', required: true },
+  ];
+
+  // Composant Avatar/Logo
+  const LogoDisplay: React.FC<{ pressing: Pressing, sizeClass: string }> = ({ pressing, sizeClass }) => (
+    <div className={`flex-shrink-0 flex items-center justify-center ${sizeClass} rounded-full bg-blue-600 text-white font-bold border-4 border-blue-100 dark:border-blue-900 shadow-md`}>
+        {pressing.logoBase64 ? (
+            <img 
+                src={pressing.logoBase64} 
+                alt={`${pressing.nom} logo`}
+                className={`w-full h-full rounded-full object-cover`}
+            />
+        ) : (
+            <span className="text-3xl">
+                {pressing.nom.charAt(0).toUpperCase()}
+            </span>
+        )}
+    </div>
+  );
+
+
+  return (
+    <div className="space-y-6">
+      
+      {pressing ? (
+        // --- AFFICHAGE DU PROFIL EXISTANT ---
+        <Card title="Profil de votre Pressing">
+            <div className="flex items-center space-x-4 mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                <LogoDisplay pressing={pressing} sizeClass="w-20 h-20" /> 
+                <div className="flex-grow">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pressing.nom}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Informations détaillées de votre établissement.</p>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                {dataFields.map(field => (
+                    <div key={field.key} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <field.icon className="h-5 w-5 text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{field.label}</p>
+                            <p className="font-semibold text-gray-900 dark:text-gray-100 break-words">{pressing[field.key]}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            
+            {/* BOUTONS D'ACTION CLAIRS ET VISIBLES */}
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                    onClick={handleDelete}
+                    className="px-4 py-2 rounded-lg font-semibold text-red-600 border border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition flex items-center gap-2"
+                >
+                    <Trash2 className="h-4 w-4" /> Supprimer
+                </button>
+                <button
+                    onClick={handleOpenDialog}
+                    // Style de bouton principal (bleu) pour la modification
+                    className="px-4 py-2 rounded-lg font-bold text-white transition duration-300 shadow-md bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+                >
+                    <Pencil className="h-4 w-4" /> Modifier le Profil
+                </button>
+            </div>
+        </Card>
+      ) : (
+        // --- AFFICHAGE DE L'ÉTAT VIDE ---
+        <Card>
+            <div className="text-center p-10 space-y-4">
+                <Factory className="h-10 w-10 text-gray-400 mx-auto" />
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Aucun Pressing Configuré</h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                    Veuillez ajouter le profil de votre établissement pour configurer le reste de l'application.
+                </p>
+                <button
+                    onClick={handleOpenDialog}
+                    className="mt-4 px-6 py-3 rounded-lg font-bold text-white transition duration-300 shadow-xl bg-blue-600 hover:bg-blue-700 flex items-center gap-2 mx-auto"
+                >
+                    <Plus className="h-5 w-5" /> Ajouter mon Pressing
+                </button>
+            </div>
+        </Card>
+      )}
+
+      {/* Modal (Utilisé pour Ajouter/Modifier) */}
+      <Dialog isOpen={isDialogOpen} onClose={resetDialog} title={isEditing ? "Modifier le Profil" : "Ajouter mon Pressing"}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          
+          {/* Champ d'Upload de Fichier (Logo) */}
+          <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Logo de l'Établissement <span className="text-gray-400">(Facultatif - Fichier Image)</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-300 dark:hover:file:bg-blue-800"
+              />
+              {formData.logoBase64 && (
+                <div className="mt-2 flex items-center gap-3">
+                    <img src={formData.logoBase64} alt="Aperçu du logo" className="h-10 w-10 rounded-full object-cover border border-gray-300 dark:border-gray-600" />
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Logo chargé localement.</span>
+                    <button 
+                        type="button" 
+                        onClick={() => setFormData(p => ({...p, logoBase64: undefined}))}
+                        className="text-red-500 text-sm hover:text-red-700 transition"
+                    >
+                        [Retirer]
+                    </button>
+                </div>
+              )}
+          </div>
+          
+          {/* Champs de Données (Nom, Adresse, etc.) */}
+          <div className="space-y-1"> 
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Nom de l'Établissement <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.nom || ''} 
+                onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                placeholder={`Entrez le nom de l'établissement`}
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+              />
+          </div>
+          {dataFields.map((field) => ( // Les autres champs
+            <div className="space-y-1" key={field.key}>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {field.label} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type={field.type}
+                value={formData[field.key] || ''} 
+                onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                placeholder={`Entrez le ${field.label.toLowerCase()}`}
+                required={field.required}
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+              />
+            </div>
+          ))}
+          <button type="submit" className="w-full mt-6 px-4 py-2 rounded-lg font-bold text-white transition duration-300 shadow-md bg-blue-600 hover:bg-blue-700">
+            {isEditing ? "Sauvegarder les Modifications" : "Ajouter le Pressing"}
+          </button>
+        </form>
+      </Dialog>
+    </div>
+  );
+};
+
+
+// =================================================================================
+// COMPOSANT 2/2 : GestionTarifs (Conditionné par l'existence du Pressing)
+// =================================================================================
+interface GestionTarifsProps {
+    isPressingConfigured: boolean;
+}
+
+const GestionTarifs: React.FC<GestionTarifsProps> = ({ isPressingConfigured }) => {
+  const [tariffs, setTariffs] = useState<Tariff[]>(mockTariffs);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTariff, setEditingTariff] = useState<Tariff | null>(null);
+  const [formData, setFormData] = useState<Omit<Tariff, 'id'>>({ article: "", service: "", prix: 0, unite: "Pièce" });
+  
+  // Si le pressing n'est pas configuré, on affiche un message d'erreur
+  if (!isPressingConfigured) {
+    return (
+        <Card>
+            <div className="text-center p-10 space-y-4 border border-blue-200 dark:border-blue-900 rounded-xl bg-blue-50 dark:bg-blue-950">
+                <Zap className="h-10 w-10 text-blue-500 mx-auto" />
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Accès Refusé</h3>
+                <p className="text-gray-600 dark:text-gray-300">
+                    Veuillez **configurer le profil de votre pressing** dans l'onglet "Mon Pressing" avant de pouvoir gérer la grille tarifaire.
+                </p>
+            </div>
+        </Card>
+    );
+  }
+
+  const resetDialog = useCallback(() => { 
+    setIsDialogOpen(false); 
+    setEditingTariff(null); 
+    setFormData({ article: "", service: "", prix: 0, unite: "Pièce" }); 
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.article || !formData.service || formData.prix <= 0 || !formData.unite) {
+      showToast("Erreur", "Veuillez remplir tous les champs correctement.", true);
+      return;
     }
 
-    setFormData({ nom: "", adresse: "", telephone: "", email: "" });
-    setEditingPressing(null);
-    setIsDialogOpen(false);
+    if (editingTariff) {
+      setTariffs(tariffs.map(t => t.id === editingTariff.id ? { ...t, ...formData } : t));
+      showToast("Tarif modifié", `Le tarif pour "${formData.article}" a été mis à jour.`);
+    } else {
+      const newTariff: Tariff = { id: String(Date.now()), ...formData };
+      setTariffs([...tariffs, newTariff]);
+      showToast("Tarif ajouté", `Nouveau tarif pour "${formData.article}" ajouté.`);
+    }
+    resetDialog();
   };
 
-  const handleEdit = (pressing: Pressing) => {
-    setEditingPressing(pressing);
-    setFormData({ nom: pressing.nom, adresse: pressing.adresse, telephone: pressing.telephone, email: pressing.email });
+  const handleEdit = useCallback((tariff: Tariff) => {
+    setEditingTariff(tariff);
+    setFormData({ article: tariff.article, service: tariff.service, prix: tariff.prix, unite: tariff.unite });
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleDelete = (id: string, nom: string) => {
-    // Utilisation de window.confirm() car nous avons remplacé alert()
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le pressing "${nom}" ?`)) return;
-    setPressings(pressings.filter(p => p.id !== id));
-    showToast("Pressing supprimé", `Le pressing "${nom}" a été supprimé avec succès.`, true);
-  };
-
-  const resetDialog = () => { setIsDialogOpen(false); setEditingPressing(null); setFormData({ nom: "", adresse: "", telephone: "", email: "" }); };
-
+  const handleDelete = useCallback((id: string, article: string, service: string) => {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le tarif pour "${article} - ${service}" ?`)) return;
+    setTariffs(tariffs.filter(t => t.id !== id));
+    showToast("Tarif supprimé", `Le tarif pour "${article} - ${service}" a été supprimé.`, true);
+  }, [tariffs]);
+  
   const stats = useMemo(() => ({
-    total: pressings.length,
-    villes: [...new Set(pressings.map(p => p.adresse.split(',').pop()?.trim() || 'Inconnue'))].length
-  }), [pressings]);
+    total: tariffs.length,
+    articles: [...new Set(tariffs.map(t => t.article))].length,
+  }), [tariffs]);
 
-  // --- CONTENU SPECIFIQUE A LA GESTION DES PRESSINGS ---
-  const renderPressingsContent = () => (
+  return (
     <div className="space-y-6">
       <div className="flex justify-end">
         <button
-          onClick={() => { setEditingPressing(null); setFormData({ nom: "", adresse: "", telephone: "", email: "" }); setIsDialogOpen(true); }}
-          className="px-6 py-2 rounded-lg font-semibold text-white transition duration-300 shadow-md bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+          onClick={() => { setEditingTariff(null); setFormData({ article: "", service: "", prix: 0, unite: "Pièce" }); setIsDialogOpen(true); }}
+          className="px-6 py-2 rounded-lg font-semibold text-white transition duration-300 shadow-md bg-green-600 hover:bg-green-700 flex items-center gap-2"
         >
-          <Plus className="h-4 w-4" /> Ajouter un Pressing
+          <Plus className="h-4 w-4" /> Ajouter un Tarif
         </button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2">
-        
-        {/* Carte 1: Total Pressings */}
-        <Card className="hover:shadow-lg border-l-4 border-blue-500">
+        <Card className="hover:shadow-xl border-l-4 border-green-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Total Pressings</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Tarifs Totaux</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats.total}</p>
             </div>
-            <Home className="h-7 w-7 text-blue-500 opacity-60" />
+            <Tag className="h-7 w-7 text-green-500 opacity-60" />
           </div>
         </Card>
-
-        {/* Carte 2: Villes/Zones Gérées */}
-        <Card className="hover:shadow-lg border-l-4 border-purple-500">
+        <Card className="hover:shadow-xl border-l-4 border-yellow-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Villes/Zones Gérées</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats.villes}</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">Articles Couverts</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats.articles}</p>
             </div>
-            <MapPin className="h-7 w-7 text-purple-500 opacity-60" />
+            <Ruler className="h-7 w-7 text-yellow-500 opacity-60" />
           </div>
         </Card>
       </div>
 
       {/* Table */}
-      <Card title="Liste des Établissements">
+      <Card title="Liste des Tarifs Article/Service">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nom du Pressing</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Adresse</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">E-mail</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Téléphone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Article</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Prix</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Unité</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {pressings.length === 0 ? (
+              {tariffs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-center italic">Aucun pressing n'est enregistré.</td>
+                  <td colSpan={5} className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-center italic">Aucun tarif n'est enregistré.</td>
                 </tr>
               ) : (
-                pressings.map((pressing) => (
-                  <tr key={pressing.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{pressing.nom}</td>
-                    
-                    {/* Colonne Adresse */}
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <div className="flex items-start gap-1">
-                            <MapPin className="h-3 w-3 text-gray-400 dark:text-gray-500 shrink-0 mt-1" />
-                            {pressing.adresse}
+                tariffs.map((tariff) => (
+                  <tr key={tariff.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{tariff.article}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{tariff.service}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                            {tariff.prix.toLocaleString('fr-FR')} <Euro className="h-3 w-3 text-gray-500 dark:text-gray-400"/>
                         </div>
                     </td>
-                    {/* Colonne E-mail */}
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <div className="flex items-start gap-1">
-                            <Mail className="h-3 w-3 text-gray-400 dark:text-gray-500 shrink-0 mt-1" />
-                            {pressing.email}
-                        </div>
-                    </td>
-                    {/* Colonne Téléphone */}
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <div className="flex items-start gap-1">
-                            <Phone className="h-3 w-3 text-gray-400 dark:text-gray-500 shrink-0 mt-1" />
-                            {pressing.telephone}
-                        </div>
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{tariff.unite}</td>
                     
                     <td className="px-6 py-4 text-right text-sm font-medium">
                         <div className="flex justify-end gap-2">
-                            <button onClick={() => handleEdit(pressing)} className="p-2 rounded-full text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-gray-700 transition">
+                            <button onClick={() => handleEdit(tariff)} className="p-2 rounded-full text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-gray-700 transition" title="Modifier">
                                 <Pencil className="h-4 w-4" />
                             </button>
-                            <button onClick={() => handleDelete(pressing.id, pressing.nom)} className="p-2 rounded-full text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-gray-700 transition">
+                            <button onClick={() => handleDelete(tariff.id, tariff.article, tariff.service)} className="p-2 rounded-full text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-gray-700 transition" title="Supprimer">
                                 <Trash2 className="h-4 w-4" />
                             </button>
                         </div>
@@ -226,61 +450,115 @@ export default function ParametresPressing() {
           </table>
         </div>
       </Card>
+
+      {/* Modal Tarifs */}
+      <Dialog isOpen={isDialogOpen} onClose={resetDialog} title={editingTariff ? "Modifier le Tarif" : "Ajouter un Tarif"}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Article</label>
+              <input
+                type="text"
+                value={formData.article}
+                onChange={(e) => setFormData({ ...formData, article: e.target.value })}
+                placeholder="Ex: Chemise, Tapis"
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Service</label>
+              <select
+                value={formData.service}
+                onChange={(e) => setFormData({ ...formData, service: e.target.value })}
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+              >
+                <option value="">Sélectionner un service</option>
+                <option>Lavage simple</option>
+                <option>Lavage à sec</option>
+                <option>Repassage</option>
+                <option>Nettoyage intensif</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Prix (en devise locale)</label>
+              <input
+                type="number"
+                value={formData.prix === 0 ? "" : formData.prix}
+                onChange={(e) => setFormData({ ...formData, prix: Number(e.target.value) })}
+                placeholder="Ex: 1500"
+                required
+                min="1"
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Unité de mesure</label>
+              <select
+                value={formData.unite}
+                onChange={(e) => setFormData({ ...formData, unite: e.target.value })}
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+              >
+                <option>Pièce</option>
+                <option>kg</option>
+                <option>m²</option>
+                <option>Heure</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" className="w-full mt-6 px-4 py-2 rounded-lg font-bold text-white transition duration-300 shadow-md bg-green-600 hover:bg-green-700">
+            {editingTariff ? "Sauvegarder le Tarif" : "Ajouter le Tarif"}
+          </button>
+        </form>
+      </Dialog>
     </div>
   );
+}
 
-  // --- CONTENU DES NOUVELLES ZONES (Placeholders) ---
+
+// =================================================================================
+// COMPOSANT PRINCIPAL (ParametresPressing) - Gère la navigation et l'état global
+// =================================================================================
+export default function ParametresPressing() {
+  // L'état du pressing est maintenant géré ici
+  const initialPressing: Pressing | null = { nom: "Net'Express Central", adresse: "Rue de la République, 12345 Ville", telephone: "+33 1 23 45 67 89", email: "contact@netexpress.com", logoBase64: undefined }; 
+  const [pressing, setPressing] = useState<Pressing | null>(initialPressing); 
+  const [activeTab, setActiveTab] = useState<ActiveTab>('pressings'); 
+  
+  const isPressingConfigured = !!pressing;
+
+  const tabs = [
+    { id: 'pressings', name: 'Mon Pressing', icon: User },
+    { id: 'tarifs', name: 'Grille Tarifaire', icon: Tag },
+  ];
+
   const renderContent = () => {
     switch (activeTab) {
       case 'pressings':
-        return renderPressingsContent();
-      case 'linge':
-        return (
-          <Card title="Gestion des Articles (Linge)">
-            <p className="text-gray-500 dark:text-gray-400">
-              C'est ici que vous définirez la liste de tous les articles que vous traitez (Ex: Chemise, Pantalon, Tapis, Rideaux).
-            </p>
-            <p className="mt-4 text-sm text-gray-400 dark:text-gray-500">
-              <span className="font-bold">Prochaine étape :</span> Implémenter le tableau et le formulaire pour ajouter/modifier les articles.
-            </p>
-          </Card>
-        );
+        // Passe l'état et le setter au composant
+        return <GestionPressings pressing={pressing} setPressing={setPressing} />;
       case 'tarifs':
-        return (
-          <Card title="Gestion des Tarifs">
-            <p className="text-gray-500 dark:text-gray-400">
-              Cette section permettra de configurer les prix pour chaque combinaison article/service, potentiellement par zone de pressing.
-            </p>
-            <p className="mt-4 text-sm text-gray-400 dark:text-gray-500">
-              <span className="font-bold">Prochaine étape :</span> Implémenter la logique tarifaire.
-            </p>
-          </Card>
-        );
-      case 'services':
-        return (
-          <Card title="Gestion des Services">
-            <p className="text-gray-500 dark:text-gray-400">
-              Configurez les services offerts par votre entreprise (Ex: Lavage simple, Repassage seul, Lavage à sec, Livraison/Collecte).
-            </p>
-            <p className="mt-4 text-sm text-gray-400 dark:text-gray-500">
-              <span className="font-bold">Prochaine étape :</span> Implémenter la gestion des services.
-            </p>
-          </Card>
-        );
+        // Passe la condition d'existence du pressing au composant
+        return <GestionTarifs isPressingConfigured={isPressingConfigured} />;
       default:
-        return null;
+        return <GestionPressings pressing={pressing} setPressing={setPressing} />;
     }
   };
 
-  // --- JSX Global ---
   return (
     // CONTENEUR PRINCIPAL: Support Dark Mode
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 p-4 sm:p-8 space-y-6 font-sans">
       
       {/* Header */}
       <div className="pb-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Paramètres de l'Application</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Configurez les fondations de votre activité de blanchisserie.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Paramètres de Configuration</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">Gérez le profil de votre unique établissement et ses prix.</p>
       </div>
 
       {/* Tab Navigation Bar */}
@@ -288,16 +566,22 @@ export default function ParametresPressing() {
         {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
+            
+            // Logique pour désactiver l'onglet si le pressing n'est pas configuré
+            const isDisabled = tab.id === 'tarifs' && !isPressingConfigured;
+
             return (
                 <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as ActiveTab)}
+                    onClick={() => { if (!isDisabled) setActiveTab(tab.id as ActiveTab); }}
+                    disabled={isDisabled}
                     className={`
                         flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors duration-200
                         ${isActive 
                             ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
                         }
+                        ${isDisabled ? 'opacity-50 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent' : ''}
                         rounded-t-lg whitespace-nowrap
                     `}
                 >
@@ -310,31 +594,6 @@ export default function ParametresPressing() {
 
       {/* Content based on activeTab */}
       {renderContent()}
-
-      {/* Modal - Uniquement utilisé pour la gestion des Pressings */}
-      <PressingDialog isOpen={isDialogOpen} onClose={resetDialog} title={editingPressing ? "Modifier le Pressing" : "Ajouter un Pressing"}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {['nom', 'adresse', 'email', 'telephone'].map((field) => (
-            <div className="space-y-1" key={field}>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
-                {field === 'email' ? 'Adresse E-mail' : field === 'telephone' ? 'Numéro de Téléphone' : field === 'nom' ? 'Nom du Pressing' : 'Adresse Complète'}
-              </label>
-              <input
-                type={field === 'email' ? 'email' : field === 'telephone' ? 'tel' : 'text'}
-                value={formData[field as keyof typeof formData]}
-                onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
-                placeholder={field === 'nom' ? "Ex: Net'Express Central" : field === 'adresse' ? "Ex: Rue 42, Plateau, Abidjan" : field === 'email' ? "contact@pressing.com" : "+225 00 00 00 00 00"}
-                required
-                // Champs de formulaire en mode sombre
-                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-              />
-            </div>
-          ))}
-          <button type="submit" className="w-full mt-6 px-4 py-2 rounded-lg font-bold text-white transition duration-300 shadow-md bg-blue-600 hover:bg-blue-700">
-            {editingPressing ? "Sauvegarder les Modifications" : "Ajouter le Pressing"}
-          </button>
-        </form>
-      </PressingDialog>
     </div>
   );
 }
