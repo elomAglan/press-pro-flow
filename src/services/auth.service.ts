@@ -35,3 +35,10 @@ export async function updateCompte(
     body: JSON.stringify({ email, password, role }),
   });
 }
+
+// Supprimer un utilisateur
+export async function deleteCompte(id: number) {
+  return apiFetch(`/api/auth/${id}`, {
+    method: "DELETE",
+  });
+}
