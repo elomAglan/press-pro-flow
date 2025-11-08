@@ -303,6 +303,13 @@ const GestionPressings: React.FC<GestionPressingsProps> = ({ pressing, setPressi
 };
 
 
+
+
+
+
+
+
+
 // =================================================================================
 // COMPOSANT 2/2 : GestionTarifs (MODIFIÉ)
 // =================================================================================

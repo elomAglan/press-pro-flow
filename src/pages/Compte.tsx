@@ -51,7 +51,9 @@ export default function Compte() {
   const [roleValue, setRoleValue] = useState("COMPTOIR");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState("");
+
   const role = (localStorage.getItem("role") || "ADMIN").toUpperCase();
+  const isAdmin = role === "ADMIN" || role === "ADMINISTRATEUR";
 
   // 🔹 Charger les utilisateurs au montage
   useEffect(() => {
@@ -146,8 +148,6 @@ export default function Compte() {
     resetForm();
   };
 
-  const isAdmin = role === "ADMIN" || role === "ADMINISTRATEUR";
-
   return (
     <div className="max-w-6xl mx-auto mt-10 px-4 space-y-8">
       <h1 className="text-3xl font-bold text-gray-800 text-center flex items-center justify-center gap-3">
@@ -162,7 +162,9 @@ export default function Compte() {
               <TableHead>Email</TableHead>
               <TableHead>Mot de passe</TableHead>
               <TableHead>Rôle</TableHead>
-              <TableHead className="text-right w-[150px]">Actions</TableHead>
+              {isAdmin && (
+                <TableHead className="text-right w-[150px]">Actions</TableHead>
+              )}
             </TableRow>
           </TableHeader>
 
@@ -187,8 +189,8 @@ export default function Compte() {
                     </span>
                   </TableCell>
 
-                  <TableCell className="text-right">
-                    {isAdmin && (
+                  {isAdmin && (
+                    <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
@@ -210,8 +212,8 @@ export default function Compte() {
                           </Button>
                         )}
                       </div>
-                    )}
-                  </TableCell>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
@@ -219,7 +221,7 @@ export default function Compte() {
         </Table>
       </Card>
 
-      {/* ✅ Bouton "Ajouter" visible uniquement pour ADMIN / ADMINISTRATEUR */}
+      {/* ✅ Bouton "Ajouter" visible uniquement pour ADMIN */}
       {isAdmin && (
         <div className="fixed bottom-6 right-6">
           <Button
@@ -231,7 +233,7 @@ export default function Compte() {
         </div>
       )}
 
-      {/* 🔹 Dialogue d’ajout / modification */}
+      {/* 🔹 Dialogue d'ajout / modification */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
