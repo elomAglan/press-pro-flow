@@ -36,7 +36,7 @@ function pressingToFormData(p: Pressing): FormData {
 }
 
 export async function getAllPressings(): Promise<Pressing[]> {
-  return apiFetch("/api/pressing", {
+  return apiFetch("/api/pressing/${id}", {
     method: "GET",
   });
 }
