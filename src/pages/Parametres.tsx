@@ -123,11 +123,11 @@ export default function Parametres() {
       setIsLoading(false);
     }
   };
-    
+
   // Fonction pour naviguer vers la page Tarifs
   const handleGoToTarifs = () => {
-      // Remplacez '/tarifs' par le chemin réel de votre page Tarifs si différent
-      navigate('/tarifs'); 
+    // Remplacez '/tarifs' par le chemin réel de votre page Tarifs si différent
+    navigate('/tarifs');
   };
 
 
@@ -196,22 +196,21 @@ export default function Parametres() {
 
                 {/* Boutons Modifier / Tarifs / Supprimer */}
                 <div className="flex gap-2 mt-8">
-                    {/* Bouton Tarifs corrigé */}
-                    <button
-                        onClick={handleGoToTarifs}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
-                        title="Gérer les tarifs du pressing"
-                    >
-                        <Tag size={16} /> Tarifs
-                    </button>
-                    {/* Bouton Modifier */}
+                  {/* Bouton Tarifs corrigé */}
+                  <button
+                    onClick={handleGoToTarifs}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
+                    title="Gérer les tarifs du pressing"
+                  >
+                    <Tag size={16} /> Tarifs
+                  </button>
+                  {/* Bouton Modifier 
                     <button
                         onClick={() => openDialog("edit")}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
                     >
                         <Pencil size={16} /> Modifier
                     </button>
-                    {/* Bouton Supprimer */}
                      <button
                         onClick={handleDelete}
                         disabled={isLoading}
@@ -220,6 +219,8 @@ export default function Parametres() {
                     >
                         <Trash2 size={16} />
                     </button>
+
+                    */}
                 </div>
               </div>
 
