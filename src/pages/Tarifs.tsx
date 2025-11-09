@@ -7,7 +7,7 @@ import { getAllTarifs, createTarif, updateTarif, deleteTarif } from '@/services/
 // Définition de l'interface Tarif
 interface Tarif {
   id: number;
-  linge: string;
+  article: string;
   service: string;
   prix: number;
 }
@@ -31,7 +31,7 @@ interface TarifFormModalProps {
 const TarifFormModal: React.FC<TarifFormModalProps> = ({ tarifToEdit, onClose, onSave }) => {
   const isEditing = !!tarifToEdit;
 
-  const initialData = tarifToEdit || { linge: '', service: '', prix: 0 };
+  const initialData = tarifToEdit || { article: '', service: '', prix: 0 };
   const [formData, setFormData] = React.useState<Omit<Tarif, 'id'>>({
     ...initialData,
     service: initialData.service || '',
@@ -47,7 +47,7 @@ const TarifFormModal: React.FC<TarifFormModalProps> = ({ tarifToEdit, onClose, o
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.linge || !formData.service || formData.prix <= 0) {
+    if (!formData.article || !formData.service || formData.prix <= 0) {
       alert("Veuillez remplir tous les champs. Le prix doit être supérieur à zéro.");
       return;
     }
@@ -60,7 +60,7 @@ const TarifFormModal: React.FC<TarifFormModalProps> = ({ tarifToEdit, onClose, o
       <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-900">
-            {isEditing ? `Modifier : ${tarifToEdit?.linge}` : "Ajouter un nouveau tarif"}
+            {isEditing ? `Modifier : ${tarifToEdit?.article}` : "Ajouter un nouveau tarif"}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
             <X size={24} />
@@ -69,12 +69,12 @@ const TarifFormModal: React.FC<TarifFormModalProps> = ({ tarifToEdit, onClose, o
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="linge" className="block text-sm font-medium text-gray-700">Type de Linge</label>
+            <label htmlFor="article" className="block text-sm font-medium text-gray-700">Type de article</label>
             <input
               type="text"
-              id="linge"
-              name="linge"
-              value={formData.linge}
+              id="article"
+              name="article"
+              value={formData.article}
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
               placeholder="Ex: Chemise en coton"
@@ -233,7 +233,7 @@ export default function Tarifs() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Linge</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">article</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix (€)</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -242,7 +242,7 @@ export default function Tarifs() {
             <tbody className="bg-white divide-y divide-gray-200">
               {tarifs.map((tarif) => (
                 <tr key={tarif.id} className="hover:bg-purple-50 transition duration-150">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{tarif.linge}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{tarif.article}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{tarif.service}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold flex items-center gap-1">
                     <DollarSign size={14} className="text-green-600"/>
