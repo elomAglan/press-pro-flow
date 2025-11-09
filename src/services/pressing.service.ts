@@ -31,6 +31,7 @@ export async function updatePressing(id: number, p: Pressing): Promise<Pressing>
   });
 }
 
+
 // ✅ Suppression d'un pressing (admin uniquement)
 export async function deletePressing(id: number): Promise<void> {
   return apiFetch(`/api/pressing/delete/${id}`, { method: "DELETE" });
