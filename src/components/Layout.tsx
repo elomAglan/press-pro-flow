@@ -52,8 +52,8 @@ export function Layout({ children }: LayoutProps) {
                 <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300 font-semibold">
                   {role ? role[0].toUpperCase() : "U"}
                 </div>
-                <span className="hidden sm:inline text-gray-700 dark:text-gray-300 font-medium truncate">
-                  {role || "Utilisateur"}
+                <span className="hidden sm:inline text-gray-700 dark:text-gray-300 font-medium truncate uppercase">
+                  {role ? role.toUpperCase() : ""}
                 </span>
               </div>
             </div>

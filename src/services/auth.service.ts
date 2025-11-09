@@ -42,3 +42,18 @@ export async function deleteCompte(id: number) {
     method: "DELETE",
   });
 }
+
+// Création d'un compte public (API ouverte)
+export async function publicSignup(email: string, password: string, role: string) {
+  return apiFetch("/api/auth/public/save", {
+    method: "POST",
+    body: JSON.stringify({ email, password, role }),
+  });
+}
+
+// Récupérer les rôles
+export async function getRoles() {
+  return apiFetch("/api/auth/role", {
+    method: "GET",
+  });
+}

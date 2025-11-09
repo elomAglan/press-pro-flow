@@ -87,7 +87,7 @@ export default function Clients() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Êtes-vous sûr de vouloir supprimer ce client ?")) return;
-    
+
     try {
       await deleteClient(id);
       setClients(clients.filter(c => c.id !== id));
@@ -105,8 +105,8 @@ export default function Clients() {
       if (editingClient) {
         // Mise à jour
         const updated = await updateClient(editingClient.id, formData);
-        setClients(clients.map(c => c.id === editingClient.id 
-          ? { ...c, ...formData, status: updated.statutClient || c.status } 
+        setClients(clients.map(c => c.id === editingClient.id
+          ? { ...c, ...formData, status: updated.statutClient || c.status }
           : c
         ));
       } else {
@@ -122,7 +122,7 @@ export default function Clients() {
         };
         setClients([...clients, clientToAdd]);
       }
-      
+
       setFormData(emptyFormData);
       setEditingClient(null);
       setIsDialogOpen(false);
@@ -134,13 +134,13 @@ export default function Clients() {
     }
   };
 
-  const getStatusBadge = (status: ClientStatus) => 
+  const getStatusBadge = (status: ClientStatus) =>
     status === "Actif"
       ? <Badge className="bg-green-500 text-green-900">Actif</Badge>
       : <Badge className="bg-red-100 text-red-700">Inactif</Badge>;
 
   const handleExport = () => {
-    const headers = ["ID","Nom","Téléphone","Adresse","Statut","Date"];
+    const headers = ["ID", "Nom", "Téléphone", "Adresse", "Statut", "Date"];
     const csvRows = filteredClients.map(c => [
       c.id, c.nom, c.telephone, c.adresse, c.status, new Date(c.date).toLocaleDateString()
     ].map(f => `"${f}"`).join(','));
@@ -158,7 +158,9 @@ export default function Clients() {
   return (
     <div className="p-4 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Clients</h1>
+        <h1 className="text-2xl font-bold">
+          Clients ({filteredClients.length})
+        </h1>
         <div className="flex gap-2">
           <Button onClick={handleExport} className="bg-yellow-500 hover:bg-yellow-600 text-white">
             <Download className="w-4 h-4 mr-2" />
@@ -201,9 +203,9 @@ export default function Clients() {
 
       <div className="relative">
         <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-        <Input 
-          placeholder="Rechercher par nom ou téléphone..." 
-          value={searchTerm} 
+        <Input
+          placeholder="Rechercher par nom ou téléphone..."
+          value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           className="pl-10"
         />
@@ -235,17 +237,17 @@ export default function Clients() {
                 <td className="px-4 py-3 text-sm">{new Date(c.date).toLocaleDateString()}</td>
                 <td className="px-4 py-3 text-sm">
                   <div className="flex gap-2">
-                    <Button 
-                      onClick={() => handleEdit(c)} 
-                      size="sm" 
+                    <Button
+                      onClick={() => handleEdit(c)}
+                      size="sm"
                       variant="outline"
                       className="hover:bg-blue-50"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button 
-                      onClick={() => handleDelete(c.id)} 
-                      size="sm" 
+                    <Button
+                      onClick={() => handleDelete(c.id)}
+                      size="sm"
                       variant="outline"
                       className="hover:bg-red-50 text-red-600"
                     >
@@ -257,7 +259,7 @@ export default function Clients() {
             ))}
           </tbody>
         </table>
-        
+
         {filteredClients.length === 0 && !isLoading && (
           <p className="text-center text-gray-500 py-8">Aucun client trouvé</p>
         )}
