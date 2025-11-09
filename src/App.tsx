@@ -19,6 +19,9 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 
+// IMPORT DU NOUVEAU COMPOSANT TARIFS
+import Tarifs from "./pages/Tarifs";
+
 const queryClient = new QueryClient();
 
 const App: React.FC = () => (
@@ -70,6 +73,13 @@ const App: React.FC = () => (
             path="/parametres"
             element={<Layout><Parametres /></Layout>}
           />
+
+          {/* AJOUT DE LA ROUTE TARIFS */}
+          <Route
+            path="/tarifs"
+            element={<Layout><Tarifs /></Layout>}
+          />
+
           <Route
             path="/rapports"
             element={<Layout><Rapports /></Layout>}

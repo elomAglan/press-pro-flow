@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+// Import de useNavigate pour la navigation
+import { useNavigate } from "react-router-dom";
 import {
   getMyPressing,
   createPressing,
@@ -6,7 +8,8 @@ import {
   deletePressing,
   Pressing
 } from "../services/pressing.service";
-import { Loader2, Pencil, Plus, Trash2, Mail, Phone, MapPin, Building2 } from "lucide-react";
+// CORRECTION : Remplacement de PriceTags par Tag, qui est un membre exporté
+import { Loader2, Pencil, Plus, Trash2, Mail, Phone, MapPin, Building2, Tag } from "lucide-react";
 
 export default function Parametres() {
   const [pressing, setPressing] = useState<Pressing | null>(null);
@@ -15,13 +18,14 @@ export default function Parametres() {
   const [error, setError] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
 
+  const navigate = useNavigate(); // Initialisation de la navigation
+
   const [form, setForm] = useState<Pressing>({
     nom: "",
     telephone: "",
     adresse: "",
     logo: "",
     id: undefined,
-
   });
 
   // Charger le pressing lié à l'utilisateur
@@ -119,6 +123,13 @@ export default function Parametres() {
       setIsLoading(false);
     }
   };
+    
+  // Fonction pour naviguer vers la page Tarifs
+  const handleGoToTarifs = () => {
+      // Remplacez '/tarifs' par le chemin réel de votre page Tarifs si différent
+      navigate('/tarifs'); 
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -183,15 +194,32 @@ export default function Parametres() {
                   </div>
                 </div>
 
-                {/* Boutons Modifier / Supprimer */}
+                {/* Boutons Modifier / Tarifs / Supprimer */}
                 <div className="flex gap-2 mt-8">
-                  <button
-                    onClick={() => openDialog("edit")}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
-                  >
-                    <Pencil size={16} /> Modifier
-                  </button>
-                 
+                    {/* Bouton Tarifs corrigé */}
+                    <button
+                        onClick={handleGoToTarifs}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
+                        title="Gérer les tarifs du pressing"
+                    >
+                        <Tag size={16} /> Tarifs
+                    </button>
+                    {/* Bouton Modifier */}
+                    <button
+                        onClick={() => openDialog("edit")}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
+                    >
+                        <Pencil size={16} /> Modifier
+                    </button>
+                    {/* Bouton Supprimer */}
+                     <button
+                        onClick={handleDelete}
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
+                        title="Supprimer le pressing"
+                    >
+                        <Trash2 size={16} />
+                    </button>
                 </div>
               </div>
 
@@ -252,7 +280,7 @@ export default function Parametres() {
           )
         )}
 
-        {/* Modal Ajouter / Modifier */}
+        {/* Modal Ajouter / Modifier (Code inchangé) */}
         {isDialogOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
@@ -343,4 +371,3 @@ export default function Parametres() {
     </div>
   );
 }
-
