@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  getPressingById,
+  getMyPressing,
   createPressing,
   updatePressing,
   deletePressing,
@@ -12,27 +12,28 @@ export default function Parametres() {
   const [pressing, setPressing] = useState<Pressing | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [form, setForm] = useState<Pressing>({
     nom: "",
-    email: "",
     telephone: "",
     adresse: "",
     logo: "",
   });
 
-  const userId = 1; // ⚠️ remplacer par l'ID de l'utilisateur courant
-
-  // Charger le pressing lié à l'utilisateur
+  // Charger le pressing lié à l’utilisateur
   useEffect(() => {
     (async () => {
       setIsLoading(true);
       try {
-        const token = localStorage.getItem("authToken");
-        if (!token) throw new Error("Utilisateur non connecté");
-
-        const p = await getPressingById(userId);
-        if (p) setPressing(p);
+        const p = await getMyPressing();
+        if (p) {
+          setPressing(p);
+          setForm(p);
+          // Vérifier si l’utilisateur est admin
+          const userEmail = localStorage.getItem("userEmail");
+          setIsAdmin(p.email === userEmail);
+        }
       } catch (e) {
         console.error("Erreur récupération pressing:", e);
       } finally {
@@ -41,8 +42,9 @@ export default function Parametres() {
     })();
   }, []);
 
-  const openDialog = () => {
-    if (pressing) setForm(pressing);
+  const openDialog = (editing: boolean = false) => {
+    if (editing && pressing) setForm(pressing);
+    else setForm({ nom: "", telephone: "", adresse: "", logo: "" });
     setIsDialogOpen(true);
   };
 
@@ -90,8 +92,20 @@ export default function Parametres() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Paramètres du Pressing</h1>
 
-      {pressing ? (
-        <div className="p-4 border rounded-lg shadow bg-white">
+      {/* Bouton Ajouter */}
+      <button
+        onClick={() => openDialog(false)}
+        className="px-6 py-3 bg-blue-600 text-white rounded flex items-center gap-2"
+      >
+        <Plus size={16} /> Ajouter un Pressing
+      </button>
+
+      {/* Loader */}
+      {isLoading && <Loader2 className="animate-spin" size={24} />}
+
+      {/* Affichage du pressing */}
+      {pressing && (
+        <div className="p-4 border rounded-lg shadow bg-white mt-4">
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-gray-200 overflow-hidden">
               {pressing.logo ? (
@@ -114,34 +128,29 @@ export default function Parametres() {
             <p className="flex items-center gap-2"><MapPin size={16} /> {pressing.adresse}</p>
           </div>
 
-          <div className="flex gap-3 mt-4">
-            <button onClick={openDialog} className="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2">
-              <Pencil size={16} /> Modifier
-            </button>
-            <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded flex items-center gap-2">
-              <Trash2 size={16} /> Supprimer
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => openDialog(true)} className="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2">
+                <Pencil size={16} /> Modifier
+              </button>
+              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded flex items-center gap-2">
+                <Trash2 size={16} /> Supprimer
+              </button>
+            </div>
+          )}
         </div>
-      ) : (
-        <button
-          onClick={openDialog}
-          className="px-6 py-3 bg-blue-600 text-white rounded flex items-center gap-2"
-        >
-          <Plus size={16} /> Ajouter un Pressing
-        </button>
       )}
 
+      {/* Modal Ajouter / Modifier */}
       {isDialogOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg w-full max-w-lg shadow">
             <h2 className="text-xl font-bold mb-4">
-              {pressing ? "Modifier le Pressing" : "Créer le Pressing"}
+              {pressing && pressing.id ? "Modifier le Pressing" : "Créer le Pressing"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <input type="text" placeholder="Nom" required value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} className="border p-2 w-full rounded" />
-              <input type="email" placeholder="Email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="border p-2 w-full rounded" />
               <input type="text" placeholder="Téléphone" required value={form.telephone} onChange={e => setForm({ ...form, telephone: e.target.value })} className="border p-2 w-full rounded" />
               <input type="text" placeholder="Adresse" required value={form.adresse} onChange={e => setForm({ ...form, adresse: e.target.value })} className="border p-2 w-full rounded" />
               <input type="file" accept="image/*" onChange={handleLogo} />
