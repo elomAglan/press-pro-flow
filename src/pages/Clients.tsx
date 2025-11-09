@@ -217,7 +217,7 @@ export default function Clients() {
         <table className="min-w-full border border-gray-200 bg-white rounded-lg">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Id</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Nom</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Téléphone</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Adresse</th>

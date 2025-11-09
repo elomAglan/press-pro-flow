@@ -10,7 +10,6 @@ const Signup: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
-  const [role, setRole] = useState<string>("Comptoir");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,21 +28,17 @@ const Signup: React.FC = () => {
       const response = await fetch(`${API_BASE_URL}/api/auth/public/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ email, password, role: "Admin" }), // rôle fixe
       });
 
-      // Ton backend renvoie directement le token en texte brut
       const token = await response.text();
-
-      console.log("Token reçu :", token);
 
       if (!response.ok || !token || token.length < 15) {
         throw new Error("Échec de l'inscription ou token invalide.");
       }
 
-      // Stockage du token pour rester connecté
       localStorage.setItem("authToken", token);
-      localStorage.setItem("role", role);
+      localStorage.setItem("role", "Admin");
       localStorage.setItem("email", email);
 
       navigate("/dashboard");
@@ -78,8 +73,6 @@ const Signup: React.FC = () => {
             </div>
           </div>
 
-
-
           {/* FORMULAIRE */}
           <div className="md:w-2/3 p-8 sm:p-10">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 md:hidden">Créer un compte</h2>
@@ -97,19 +90,6 @@ const Signup: React.FC = () => {
                   placeholder="exemple@mail.com"
                   className="w-full pl-3 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 />
-              </div>
-
-              {/* Role */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Rôle</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full pl-3 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="Comptoir">Comptoir (Accès limité)</option>
-                  <option value="Admin">Administrateur (Accès complet)</option>
-                </select>
               </div>
 
               {/* Password */}
@@ -167,7 +147,6 @@ const Signup: React.FC = () => {
                 </Link>
               </p>
             </div>
-
           </div>
         </div>
       </div>

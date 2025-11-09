@@ -1,5 +1,3 @@
-// Sidebar.jsx (Code COMPLET sans le lien 'Gestion des comptes', sans la barre de recherche, et sans la section utilisateur en bas)
-
 import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom"; 
 // Import de User, Search retirés
@@ -9,10 +7,9 @@ import { cn } from "@/lib/utils";
 // MODIFICATION: Accepter isCollapsed et setIsCollapsed via les props
 export function Sidebar({ isCollapsed, setIsCollapsed }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeNotification, setActiveNotification] = useState(false);
+  // RETRAIT: activeNotification n'est plus utilisé et a été supprimé
   const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
-  // const role = localStorage.getItem("role"); // Le rôle n'est plus utilisé car la section utilisateur est retirée
 
   // Appliquer le mode sombre
   useEffect(() => {
@@ -24,9 +21,10 @@ export function Sidebar({ isCollapsed, setIsCollapsed }) {
   }, [darkMode]);
 
   const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, badge: "3" },
-    { name: "Clients", href: "/clients", icon: Users, count: 124 },
-    { name: "Commandes", href: "/commandes", icon: ShoppingBag, badge: "12" },
+    // RETRAIT des propriétés badge et count
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Clients", href: "/clients", icon: Users },
+    { name: "Commandes", href: "/commandes", icon: ShoppingBag },
     { name: "Paiements", href: "/paiements", icon: CreditCard },
     { name: "Rapports", href: "/rapports", icon: BarChart3 },
     { name: "Paramètres", href: "/parametres", icon: Settings },
@@ -91,14 +89,13 @@ export function Sidebar({ isCollapsed, setIsCollapsed }) {
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Le bouton notification est conservé mais sans la logique de l'indicateur actif */}
           <button 
-            onClick={() => setActiveNotification(!activeNotification)}
+            // setActiveNotification(!activeNotification) retiré
             className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <Bell size={18} className="text-gray-600 dark:text-gray-300" />
-            {activeNotification && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            )}
+            {/* L'indicateur de notification est retiré */}
           </button>
           <button 
             onClick={() => setIsOpen(!isOpen)}
@@ -188,16 +185,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }) {
               {!isCollapsed && (
                 <>
                   <span className="flex-1">{item.name}</span>
-                  {item.badge && (
-                    <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
-                      {item.badge}
-                    </span>
-                  )}
-                  {item.count && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded-full">
-                      {item.count}
-                    </span>
-                  )}
+                  {/* RETRAIT des blocs item.badge et item.count */}
                 </>
               )}
 
@@ -205,7 +193,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }) {
               {isCollapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
                   {item.name}
-                  {item.badge && ` (${item.badge})`}
+                  {/* RETRAIT de l'affichage du badge dans le tooltip */}
                 </div>
               )}
             </NavLink>
