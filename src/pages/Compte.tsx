@@ -62,6 +62,7 @@ export default function Compte() {
     setIsDialogOpen(true);
   };
 
+  
   const handleAdd = () => {
     if (!isAdmin) return;
     resetForm();

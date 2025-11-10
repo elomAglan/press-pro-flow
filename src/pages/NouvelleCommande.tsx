@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Trash2, X, Calendar, User, ShoppingCart, Shirt } from "lucide-react";
+import { Plus, Trash2, X, Calendar, User, ShoppingCart, Shirt, Loader2 } from "lucide-react";
 import { getAllClients } from "../services/client.service";
 import { apiFetch } from "../services/api";
 
@@ -23,11 +23,9 @@ const calcDelivery = (date: string, mode: "standard" | "express") => {
   return d.toISOString().slice(0, 10);
 };
 
-// ---- UI COMPONENTS -------------------------------------------
+// ---- UI COMPONENTS --------------------------------------------
 const Card = ({ children, className = "" }: any) => (
-  <div
-    className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 ${className}`}
-  >
+  <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 ${className}`}>
     {children}
   </div>
 );
@@ -52,13 +50,13 @@ const Select = ({ value, onChange, children }: any) => (
 const Button = ({ children, className = "", ...props }: any) => (
   <button
     {...props}
-    className={`px-4 py-2 rounded-lg text-white text-sm font-semibold shadow transition ${className}`}
+    className={`px-4 py-2 rounded-lg text-white text-sm font-semibold shadow transition flex items-center justify-center gap-2 ${className}`}
   >
     {children}
   </button>
 );
 
-// ---- MAIN COMPONENT ------------------------------------------
+// ---- MAIN COMPONENT -------------------------------------------
 export default function NouvelleCommande() {
   const [cmd, setCmd] = useState({
     client: "",
@@ -71,6 +69,7 @@ export default function NouvelleCommande() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [tarifs, setTarifs] = useState<Parametre[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // Charger clients & paramètres
   useEffect(() => {
@@ -84,7 +83,7 @@ export default function NouvelleCommande() {
   const types = useMemo(() => [...new Set(tarifs.map((t) => t.article))], [tarifs]);
   const services = useMemo(() => [...new Set(tarifs.map((t) => t.service))], [tarifs]);
 
-  // Calcul du prix unitaire selon type/service/mode
+  // Calcul du prix unitaire
   const getPrice = (article: string, service: string, mode: "standard" | "express") => {
     return (
       tarifs.find(
@@ -103,7 +102,7 @@ export default function NouvelleCommande() {
     [draft, cmd.type, tarifs]
   );
 
-  // Ajouter article
+  // Ajouter un article
   const addArticle = () => {
     if (!draft.type || !draft.service) return;
 
@@ -122,7 +121,7 @@ export default function NouvelleCommande() {
     setDraft({ type: "", service: "", quantite: 1 });
   };
 
-  // Met à jour les prix si mode change
+  // Mise à jour des prix si changement de type
   useEffect(() => {
     setArticles((list) =>
       list.map((a) => ({
@@ -134,14 +133,11 @@ export default function NouvelleCommande() {
   }, [cmd.type, tarifs]);
 
   // Totaux
-  const total = useMemo(
-    () => articles.reduce((s, a) => s + a.prixUnitaire * a.quantite, 0),
-    [articles]
-  );
+  const total = useMemo(() => articles.reduce((s, a) => s + a.prixUnitaire * a.quantite, 0), [articles]);
   const totalNet = Math.max(0, total - cmd.remise);
   const livraison = calcDelivery(cmd.dateReception, cmd.type);
 
-  // Soumission + PDF
+  // ---- Fonction principale d'envoi et ouverture PDF ----
   const handleSubmit = async () => {
     if (!cmd.client || articles.length === 0) {
       alert("Veuillez sélectionner un client et ajouter au moins un article.");
@@ -149,12 +145,15 @@ export default function NouvelleCommande() {
     }
 
     try {
+      setLoading(true);
+
       const firstArticle = articles[0];
       const tarif = tarifs.find(
         (t) => t.article === firstArticle.type && t.service === firstArticle.service
       );
       if (!tarif) {
         alert("Paramètre introuvable pour cet article.");
+        setLoading(false);
         return;
       }
 
@@ -166,32 +165,28 @@ export default function NouvelleCommande() {
         express: cmd.type === "express",
       };
 
-      console.log("📤 Données envoyées :", body);
-
-      // Création commande
-      const created = await apiFetch("/api/commande", {
+      // ✅ Appel unique vers /api/commande/pdf
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(body),
       });
 
-      alert("✅ Commande créée avec succès !");
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Erreur lors du téléchargement du PDF");
+      }
 
-      // 🧾 Génération du PDF
-      const pdfResponse = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf/${created.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`,
-          },
-        }
-      );
-
-      if (!pdfResponse.ok) throw new Error("Erreur lors du téléchargement du PDF");
-      const blob = await pdfResponse.blob();
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       window.open(url, "_blank");
+      window.URL.revokeObjectURL(url);
 
-      // Réinitialisation
+      // 🧹 Réinitialisation
       setCmd({
         client: "",
         dateReception: new Date().toISOString().slice(0, 10),
@@ -202,9 +197,12 @@ export default function NouvelleCommande() {
     } catch (err: any) {
       console.error(err);
       alert(err.message || "❌ Erreur lors de la création de la commande");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ---- RENDER -------------------------------------------------
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       {/* HEADER */}
@@ -212,7 +210,7 @@ export default function NouvelleCommande() {
         <h1 className="text-2xl font-extrabold flex items-center gap-2">
           <ShoppingCart className="text-blue-600" /> Nouvelle commande
         </h1>
-        <Button className="bg-red-600 hover:bg-red-700 flex items-center gap-1">
+        <Button className="bg-red-600 hover:bg-red-700">
           <X size={18} /> Annuler
         </Button>
       </div>
@@ -241,9 +239,7 @@ export default function NouvelleCommande() {
             <Input
               type="date"
               value={cmd.dateReception}
-              onChange={(e) =>
-                setCmd({ ...cmd, dateReception: e.target.value })
-              }
+              onChange={(e) => setCmd({ ...cmd, dateReception: e.target.value })}
             />
             <p className="text-xs mt-1 text-blue-600 font-medium">
               Livraison prévue : {livraison}
@@ -267,27 +263,17 @@ export default function NouvelleCommande() {
         </h2>
 
         <div className="grid md:grid-cols-4 gap-4">
-          <Select
-            value={draft.type}
-            onChange={(v) => setDraft({ ...draft, type: v })}
-          >
+          <Select value={draft.type} onChange={(v) => setDraft({ ...draft, type: v })}>
             <option value="">Ligne</option>
             {types.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
+              <option key={l} value={l}>{l}</option>
             ))}
           </Select>
 
-          <Select
-            value={draft.service}
-            onChange={(v) => setDraft({ ...draft, service: v })}
-          >
+          <Select value={draft.service} onChange={(v) => setDraft({ ...draft, service: v })}>
             <option value="">Service</option>
             {services.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
+              <option key={s} value={s}>{s}</option>
             ))}
           </Select>
 
@@ -295,13 +281,11 @@ export default function NouvelleCommande() {
             type="number"
             min={1}
             value={draft.quantite}
-            onChange={(e) =>
-              setDraft({ ...draft, quantite: +e.target.value })
-            }
+            onChange={(e) => setDraft({ ...draft, quantite: +e.target.value })}
           />
 
           <Button
-            className="bg-green-600 hover:bg-green-700 flex items-center justify-center gap-1"
+            className="bg-green-600 hover:bg-green-700"
             onClick={addArticle}
           >
             <Plus size={16} /> Ajouter
@@ -309,11 +293,7 @@ export default function NouvelleCommande() {
         </div>
 
         {draft.type && draft.service && (
-          <p
-            className={`text-sm font-semibold ${
-              cmd.type === "express" ? "text-red-600" : "text-gray-700"
-            }`}
-          >
+          <p className={`text-sm font-semibold ${cmd.type === "express" ? "text-red-600" : "text-gray-700"}`}>
             Prix unitaire ({cmd.type}) : {draftPrice.toLocaleString()} FCFA
           </p>
         )}
@@ -325,28 +305,15 @@ export default function NouvelleCommande() {
 
         <div className="space-y-3 max-h-64 overflow-y-auto">
           {articles.map((a) => (
-            <div
-              key={a.id}
-              className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border"
-            >
+            <div key={a.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border">
               <div>
-                <p className="font-semibold">
-                  {a.type} — {a.service}
-                </p>
-                <p
-                  className={`text-sm ${
-                    a.priceBasis === "express"
-                      ? "text-red-600 font-semibold"
-                      : "text-gray-600"
-                  }`}
-                >
+                <p className="font-semibold">{a.type} — {a.service}</p>
+                <p className={`text-sm ${a.priceBasis === "express" ? "text-red-600 font-semibold" : "text-gray-600"}`}>
                   {a.quantite} × {a.prixUnitaire.toLocaleString()} FCFA
                 </p>
               </div>
               <button
-                onClick={() =>
-                  setArticles((x) => x.filter((i) => i.id !== a.id))
-                }
+                onClick={() => setArticles((x) => x.filter((i) => i.id !== a.id))}
                 className="text-red-600 hover:text-red-800"
               >
                 <Trash2 size={18} />
@@ -375,11 +342,19 @@ export default function NouvelleCommande() {
         </div>
       </Card>
 
+      {/* BOUTON AVEC SPINNER */}
       <Button
-        className="bg-blue-600 w-full py-3 hover:bg-blue-700 text-lg"
+        className={`w-full py-3 text-lg ${loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"}`}
         onClick={handleSubmit}
+        disabled={loading}
       >
-        Confirmer la commande
+        {loading ? (
+          <>
+            <Loader2 className="animate-spin" size={20} /> Traitement en cours...
+          </>
+        ) : (
+          "Confirmer la commande"
+        )}
       </Button>
     </div>
   );
