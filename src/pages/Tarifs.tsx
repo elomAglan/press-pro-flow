@@ -15,9 +15,11 @@ interface Tarif {
 // Liste des options de service disponibles
 const SERVICE_OPTIONS = [
   "Lavage & Repassage",
+  "Lavage & Repassage (Express)",
   "Lavage simple",
-  // Vous pouvez ajouter d'autres services ici
+  "Lavage simple (Express)",
 ];
+
 
 // --------------------
 // Composant Modal
