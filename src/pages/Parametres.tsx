@@ -141,25 +141,39 @@ export default function Parametres() {
             <p className="text-gray-500 mt-1">Gérez les informations de votre établissement</p>
           </div>
 
-          <button
-            onClick={loadPressing}
-            disabled={isLoading}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center gap-2 transition"
-          >
-            {isLoading ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
+          {/* NOUVELLE SECTION: Boutons Tarifs et Actualiser */}
+          <div className="flex gap-2">
+            {pressing && ( // Afficher le bouton Tarifs uniquement si un pressing est configuré
+              <button
+                onClick={handleGoToTarifs}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
+                title="Gérer les tarifs du pressing"
+              >
+                <Tag size={18} /> Tarifs
+              </button>
             )}
-            Actualiser
-          </button>
+
+            <button
+              onClick={loadPressing}
+              disabled={isLoading}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center gap-2 transition"
+            >
+              {isLoading ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              )}
+              Actualiser
+            </button>
+          </div>
+          {/* FIN NOUVELLE SECTION */}
         </div>
 
         {/* Message d'erreur */}
@@ -194,33 +208,19 @@ export default function Parametres() {
                   </div>
                 </div>
 
-                {/* Boutons Modifier / Tarifs / Supprimer */}
+                {/* Boutons Modifier / Supprimer (maintenus pour gérer les détails du pressing) */}
                 <div className="flex gap-2 mt-8">
-                  {/* Bouton Tarifs corrigé */}
-                  <button
+                  {/* Bouton Tarifs (Déplacé dans l'en-tête, commenté ici) */}
+                  {/* <button
                     onClick={handleGoToTarifs}
                     className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
                     title="Gérer les tarifs du pressing"
                   >
                     <Tag size={16} /> Tarifs
-                  </button>
-                  {/* Bouton Modifier 
-                    <button
-                        onClick={() => openDialog("edit")}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
-                    >
-                        <Pencil size={16} /> Modifier
-                    </button>
-                     <button
-                        onClick={handleDelete}
-                        disabled={isLoading}
-                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
-                        title="Supprimer le pressing"
-                    >
-                        <Trash2 size={16} />
-                    </button>
-
-                    */}
+                  </button> */}
+                  
+                  {/* Boutons Modifier/Supprimer/etc. ici si vous les voulez toujours dans cette zone */}
+                
                 </div>
               </div>
 

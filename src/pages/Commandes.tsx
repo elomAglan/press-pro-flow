@@ -6,14 +6,17 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 
-import { List, Plus, Search, Calendar, FileText } from "lucide-react";
+import { List, Plus, Search, Calendar } from "lucide-react";
 import NouvelleCommande from "./NouvelleCommande";
+import { useNavigate } from "react-router-dom";
 
 export default function Commandes() {
   const [commandes, setCommandes] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [currentView, setCurrentView] = useState<"list" | "create">("list");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchData() {
@@ -43,6 +46,7 @@ export default function Commandes() {
 
   return (
     <div className="p-6 space-y-6">
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -98,12 +102,18 @@ export default function Commandes() {
           <tbody>
             {filtered.length > 0 ? (
               filtered.map((c) => (
-                <tr key={c.id} className="border-t hover:bg-gray-50 cursor-pointer">
+                <tr
+                  key={c.id}
+                  className="border-t hover:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(`/commandes/${c.id}`)} // ✅ CLICK GO DETAILS
+                >
                   <td className="px-4 py-2">{c.id}</td>
                   <td className="px-4 py-2">{c.clientNom}</td>
                   <td className="px-4 py-2">{c.service}</td>
                   <td className="px-4 py-2">{c.qte}</td>
-                  <td className="px-4 py-2 text-right">{Number(c.montantNet).toLocaleString()}</td>
+                  <td className="px-4 py-2 text-right">
+                    {Number(c.montantNet).toLocaleString()}
+                  </td>
                   <td className="px-4 py-2">
                     {c.express ? (
                       <span className="text-red-600 font-semibold">Express</span>
