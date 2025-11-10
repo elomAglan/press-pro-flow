@@ -1,172 +1,198 @@
-import React from "react"; // Suppression de useState et useMemo car non utilisés
-import { useParams, useNavigate } from "react-router-dom"; 
-// Imports UI
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge"; 
-import { ArrowLeft, User, DollarSign, Clock, Package, Edit, Printer } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { getAllCommandes } from "../services/commande.service.ts";
 
-// Imports des utilitaires. Ajout du type 'Commande'.
-import { 
-    getCommandes, 
-    getClientById, 
-    getStatutBadge, 
-    getPaiementBadge,
-    Commande // <-- Ajout de l'importation du type Commande
-} from "./Commandes.utils"; 
+// Imports UI séparés
+import { Card, CardHeader, CardContent } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
+import { Badge } from "../components/ui/badge";
 
-// Composant Placeholder pour le QR Code
-const QRCodePlaceholder = ({ commandeNumber }: { commandeNumber: string }) => (
-    <div className="flex flex-col items-center justify-center p-4 h-40 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-24 h-24 text-gray-500 dark:text-gray-400">
-            <rect width="100" height="100" fill="none" stroke="currentColor" strokeWidth="2" rx="5"/>
-            <rect x="10" y="10" width="20" height="20" fill="currentColor"/>
-            <rect x="70" y="10" width="20" height="20" fill="currentColor"/>
-            <rect x="10" y="70" width="20" height="20" fill="currentColor"/>
-            <rect x="45" y="45" width="10" height="10" fill="currentColor"/>
-            <rect x="35" y="35" width="5" height="5" fill="currentColor"/>
-        </svg>
-        <p className="text-xs mt-1 text-gray-600 dark:text-gray-300">QR Code: {commandeNumber}</p>
-    </div>
-);
+// Icônes
+import { List, Plus, Search, Calendar, FileText } from "lucide-react";
 
-// Composant de rendu de Badge basé sur les données des utilitaires
-const BadgeRenderer = ({ statut, getBadgeData }: { statut: any, getBadgeData: (s: any) => { text: string, className: string } }) => {
-    const { text, className } = getBadgeData(statut);
-    return <span className={className}>{text}</span>;
+// --- Interfaces ---
+interface Client { id: string; nom: string; telephone: string; email: string; adresse: string; createdAt: Date; status: string; }
+interface Article { id: string; type: string; service: string; quantite: number; prixUnitaire: number; }
+export type StatutCommande = "en_attente" | "en_cours" | "pret" | "livre";
+type StatutPaiement = "non_paye" | "partiel" | "paye";
+export interface Commande { 
+  id: string; 
+  numero: string; 
+  clientId: string; 
+  articles: Article[]; 
+  total: number; 
+  statut: StatutCommande; 
+  statutPaiement: StatutPaiement; 
+  montantPaye: number; 
+  dateCreation: Date; 
+}
+
+type View = "list" | "create" | "details";
+
+// --- Fonctions utilitaires ---
+const getClientName = (clientId: string) => clientId; // TODO: remplacer par fetch réel
+const getArticleServices = (articles: Article[]) => Array.from(new Set(articles.map(a => a.service))).join(", ");
+const getArticleTypes = (articles: Article[]) => {
+    const counts = articles.reduce((acc, a) => { acc[a.type] = (acc[a.type] || 0) + a.quantite; return acc; }, {} as Record<string, number>);
+    return Object.entries(counts).map(([type, count]) => `${type} (${count})`).join(", ");
+};
+const getStatutBadge = (statut: StatutCommande) => {
+    let classes = "uppercase text-xs font-semibold px-2 py-0.5 rounded-full border";
+    switch(statut){
+        case "pret": return <Badge className={`${classes} bg-green-100 text-green-700 border-green-300`}>{statut}</Badge>;
+        case "livre": return <Badge className={`${classes} bg-green-200 text-green-800 border-green-400`}>{statut}</Badge>;
+        case "en_cours": return <Badge className={`${classes} bg-blue-100 text-blue-700 border-blue-300`}>{statut}</Badge>;
+        default: return <Badge className={`${classes} bg-yellow-100 text-yellow-700 border-yellow-300`}>{statut}</Badge>;
+    }
 };
 
+export default function Commandes() {
+    const [commandes, setCommandes] = useState<Commande[]>([]);
+    const [currentView, setCurrentView] = useState<View>("list");
+    const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
 
-export default function CommandeDetail(props: { commande?: Commande; onBack?: () => void; onUpdate?: (updatedCommande: any) => void }) {
-    const { id } = useParams<{ id: string }>(); // Récupère l'ID de l'URL
-    const navigate = useNavigate();
+    // États de filtre
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterStatus, setFilterStatus] = useState<StatutCommande | "all">("all");
+    const [filterDate, setFilterDate] = useState<string>("");
 
-    // Récupération de la commande à partir des données (mocks) ou utilisation de la commande fournie en props.
-    const commande: Commande | undefined = props.commande ?? getCommandes().find(c => c.id === id);
+    // 🔹 Charger les commandes depuis l'API
+    useEffect(() => {
+        async function fetchCommandes() {
+            try {
+                const data = await getAllCommandes();
+                const commandesWithDates = data.map((c: any) => ({ ...c, dateCreation: new Date(c.dateCreation) }));
+                setCommandes(commandesWithDates);
+            } catch (error) {
+                console.error("Erreur lors du chargement des commandes :", error);
+            }
+        }
+        fetchCommandes();
+    }, []);
 
-    const handleBack = () => {
-        if (props.onBack) return props.onBack();
-        navigate("/commandes"); // Redirection vers la liste
-    }
+    // 🔹 Filtrage des commandes
+    const filteredCommandes = useMemo(() => {
+        return commandes.filter(c => {
+            const clientName = getClientName(c.clientId).toLowerCase();
+            const lowerSearch = searchTerm.toLowerCase();
+            const dateCreation = new Date(c.dateCreation).toISOString().split("T")[0];
 
-    // Gestion de l'état non trouvé
-    if (!commande) {
-        return (
-            <div className="p-8 text-center bg-white dark:bg-gray-900 min-h-screen">
-                <h1 className="text-3xl font-bold text-red-500">Commande non trouvée (ID: {id})</h1>
-                <Button onClick={handleBack} className="mt-4 gap-2">
-                    <ArrowLeft className="h-4 w-4" /> Retour à la liste
-                </Button>
-            </div>
-        );
-    }
-    
-    // Récupération du client
-    const client = getClientById(commande.clientId);
-    const clientName = client ? client.nom : "Client Inconnu";
+            const matchesSearch = c.numero.toLowerCase().includes(lowerSearch) || clientName.includes(lowerSearch);
+            const matchesStatus = filterStatus === "all" || c.statut === filterStatus;
+            const matchesDate = !filterDate || dateCreation === filterDate;
+
+            return matchesSearch && matchesStatus && matchesDate;
+        }).sort((a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime());
+    }, [commandes, searchTerm, filterStatus, filterDate]);
+
+    const allStatuses: { value: StatutCommande | "all"; label: string }[] = [
+        { value: "all", label: "Tous les statuts" },
+        { value: "en_attente", label: "En attente" },
+        { value: "en_cours", label: "En cours" },
+        { value: "pret", label: "Prêt" },
+        { value: "livre", label: "Livré" },
+    ];
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 sm:p-8 font-sans max-w-6xl mx-auto">
-            <div className="flex items-center justify-between border-b pb-4 mb-6">
-                <div className="flex items-center gap-4">
-                    <Button 
-                        variant="ghost" 
-                        onClick={handleBack} 
-                        className="p-2 h-auto text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                        <ArrowLeft className="h-5 w-5 mr-2" /> Retour à la Liste
-                    </Button>
-                    <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-                        Commande: <span className="text-blue-600 dark:text-blue-400">{commande.numero}</span>
+        <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 sm:p-8 space-y-8 font-sans">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-4xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                        <List className="h-7 w-7 text-blue-600" /> Commandes
                     </h1>
+                    <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400 mt-1">
+                        Historique et gestion des ordres de nettoyage (<strong className="text-blue-600 dark:text-blue-400">Affichés: {filteredCommandes.length} / Total: {commandes.length}</strong>)
+                    </p>
                 </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" className="gap-2 text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-gray-800">
-                        <Printer className="h-4 w-4" /> Imprimer
-                    </Button>
-                    <Button className="gap-2 bg-yellow-500 hover:bg-yellow-600 text-white">
-                        <Edit className="h-4 w-4" /> Modifier
-                    </Button>
-                </div>
+
+                <Button
+                    onClick={() => setCurrentView("create")}
+                    className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all text-xs sm:text-sm"
+                >
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Nouvelle Commande</span>
+                    <span className="inline sm:hidden">Ajouter</span>
+                </Button>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-6">
-                {/* Colonne 1: Résumé & Client */}
-                <div className="lg:col-span-2 space-y-6">
-                    <Card className="shadow-xl p-6">
-                        <CardHeader className="p-0 mb-4 border-b pb-2">
-                            <h2 className="text-2xl font-semibold flex items-center gap-2 text-gray-800 dark:text-white"><Package className="h-6 w-6 text-blue-600" /> Détails de la Commande</h2>
-                        </CardHeader>
-                        <CardContent className="p-0 space-y-4">
-                            <div className="grid sm:grid-cols-2 gap-4">
-                                <DetailItem icon={<Clock className="h-5 w-5 text-gray-500" />} label="Date Création" value={commande.dateCreation.toLocaleDateString('fr-FR')} />
-                                {/* Utilisation du nouveau composant pour le rendu des badges */}
-                                <DetailItem icon={<Package className="h-5 w-5 text-gray-500" />} label="Statut Commande" value={<BadgeRenderer statut={commande.statut} getBadgeData={getStatutBadge} />} />
-                                <DetailItem icon={<DollarSign className="h-5 w-5 text-gray-500" />} label="Statut Paiement" value={<BadgeRenderer statut={commande.statutPaiement} getBadgeData={getPaiementBadge} />} />
-                                <DetailItem icon={<User className="h-5 w-5 text-gray-500" />} label="Client" value={clientName} />
-                            </div>
-                        </CardContent>
-                    </Card>
+            {/* Filtres */}
+            <Card className="p-4 shadow-xl border border-gray-100 dark:border-gray-700">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                    <div className="relative md:col-span-2">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                        <Input
+                            placeholder="Rechercher par N° Commande ou nom de client..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 h-10 border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
 
-                    {/* Section Articles */}
-                    <Card className="shadow-xl p-6">
-                        <CardHeader className="p-0 mb-4 border-b pb-2">
-                            <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">Articles ({commande.articles.length})</h2>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="space-y-3">
-                                {commande.articles.map(article => (
-                                    <div key={article.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                                        <div>
-                                            <p className="font-medium">{article.type} - {article.service}</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">{article.quantite} x {article.prixUnitaire.toLocaleString()} FCFA</p>
-                                        </div>
-                                        <p className="font-bold text-lg text-blue-600 dark:text-blue-400">
-                                            {(article.quantite * article.prixUnitaire).toLocaleString()} FCFA
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <Select value={filterStatus} onValueChange={(v: StatutCommande | "all") => setFilterStatus(v)}>
+                        <SelectTrigger className="w-full h-10 border-gray-300 dark:border-gray-600">
+                            <SelectValue placeholder="Filtrer par statut" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {allStatuses.map(status => (
+                                <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                        <Input
+                            type="date"
+                            value={filterDate}
+                            onChange={(e) => setFilterDate(e.target.value)}
+                            className="pl-10 h-10 border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
                 </div>
-                
-                {/* Colonne 2: Totaux & QR Code */}
-                <div className="lg:col-span-1 space-y-6">
-                    <Card className="shadow-xl p-6 sticky top-4">
-                        <CardHeader className="p-0 mb-4 border-b pb-2">
-                            <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">Résumé Financier</h2>
-                        </CardHeader>
-                        <CardContent className="p-0 space-y-3">
-                            <SummaryItem label="Total Commande" value={commande.total} highlight={false} />
-                            <SummaryItem label="Montant Payé" value={commande.montantPaye} highlight={true} color="text-green-600" />
-                            <SummaryItem label="Reste à Payer" value={commande.total - commande.montantPaye} highlight={true} color="text-red-600" />
-                            <div className="pt-4">
-                                <QRCodePlaceholder commandeNumber={commande.numero} />
-                            </div>
-                        </CardContent>
-                    </Card>
+            </Card>
+
+            {/* Tableau des commandes */}
+            <Card className="p-0 overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700">
+                <div className="w-full overflow-x-auto max-h-[70vh] overflow-y-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 shadow-sm z-10">
+                            <tr>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%]">N° Commande</th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[20%]">Client</th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[20%] hidden sm:table-cell">Type de Lavage</th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%] hidden lg:table-cell">Type de Commande</th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%]">Statut</th>
+                                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%]">Sous-total</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                            {filteredCommandes.length > 0 ? (
+                                filteredCommandes.map(c => (
+                                    <tr key={c.id} className="hover:bg-gray-100 dark:hover:bg-gray-800 transition duration-150 cursor-pointer"
+                                        onClick={() => { setSelectedCommandeId(c.id); setCurrentView("details"); }}
+                                    >
+                                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">{c.numero}</div>
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">{getClientName(c.clientId)}</td>
+                                        <td className="px-3 sm:px-6 py-4 whitespace-normal hidden sm:table-cell">{getArticleServices(c.articles)}</td>
+                                        <td className="px-3 sm:px-6 py-4 whitespace-normal hidden lg:table-cell">{getArticleTypes(c.articles)}</td>
+                                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">{getStatutBadge(c.statut)}</td>
+                                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right">{c.total.toLocaleString()} FCFA</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                        <FileText className="h-8 w-8 mx-auto mb-2" /> Aucune commande trouvée.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+            </Card>
         </div>
     );
 }
-
-// Composants internes pour le rendu
-const DetailItem = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: React.ReactNode }) => (
-    <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <div className="flex-shrink-0 pt-1">{icon}</div>
-        <div>
-            <p className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">{label}</p>
-            {/* Le rendu utilise désormais directement le composant BadgeRenderer si nécessaire */}
-            <div className="font-bold text-base text-gray-900 dark:text-white">{value}</div>
-        </div>
-    </div>
-);
-
-const SummaryItem = ({ label, value, highlight, color = "text-gray-900" }: { label: string, value: number, highlight: boolean, color?: string }) => (
-    <div className={`flex justify-between items-center ${highlight ? 'text-xl font-bold border-t pt-3 mt-3 border-gray-200 dark:border-gray-700' : 'text-base'}`}>
-        <span className={`${color}`}>{label}:</span>
-        <span className={`${color}`}>{value.toLocaleString()} FCFA</span>
-    </div>
-);

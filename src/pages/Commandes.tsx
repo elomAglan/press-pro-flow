@@ -1,7 +1,16 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { getAllCommandes } from "../services/commande.service.ts"; 
-import { Card, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge } from "../components/ui";
+
+// Imports UI séparés
+import { Card, CardHeader, CardContent } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
+import { Badge } from "../components/ui/badge";
+
+// Icônes
 import { List, Plus, Search, Calendar, FileText } from "lucide-react";
+
 
 // --- Interfaces (à ajuster si besoin) ---
 interface Client { id: string; nom: string; telephone: string; email: string; adresse: string; createdAt: Date; status: string; }
