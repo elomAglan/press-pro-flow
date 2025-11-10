@@ -7,19 +7,12 @@ export async function getAllCommandes() {
   return apiFetch("/api/commande", { method: "GET" });
 }
 
-// 🔹 Créer une nouvelle commande (sans PDF)
-export async function createCommande(commandeData: any) {
-  return apiFetch("/api/commande", {
-    method: "POST",
-    body: JSON.stringify(commandeData),
-  });
-}
 
 // 🔹 Créer une commande et télécharger le PDF directement
 export async function createCommandeAvecPdf(commandeData: any) {
   const token = localStorage.getItem("authToken");
 
-  const response = await fetch(`${API_BASE_URL}/api/commande/pdf`, {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -29,11 +22,11 @@ export async function createCommandeAvecPdf(commandeData: any) {
   });
 
   if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Erreur serveur: ${errText || response.statusText}`);
+    const text = await response.text();
+    console.error("Fetch PDF erreur", response.status, text);
+    throw new Error(`Erreur serveur: ${text || response.statusText}`);
   }
 
-  // 🔹 Récupérer le PDF et lancer le téléchargement
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -42,8 +35,9 @@ export async function createCommandeAvecPdf(commandeData: any) {
   a.click();
   window.URL.revokeObjectURL(url);
 
-  return true; // ✅ renvoie juste "ok" après le téléchargement
+  return true;
 }
+
 
 // 🔹 Récupérer une commande par ID
 export async function getCommandeById(id: number) {
