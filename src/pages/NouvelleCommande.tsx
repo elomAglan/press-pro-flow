@@ -1,497 +1,280 @@
-import React, { useState, useCallback, useMemo } from "react";
-import { Plus, Trash2, FileText, ShoppingCart, X } from "lucide-react"; 
+import React, { useState, useMemo, useEffect } from "react";
+import { Plus, Trash2, X, Calendar, User, ShoppingCart, Shirt  } from "lucide-react";
 
-// --- INTERFACES POUR LES COMPOSANTS SIMULÉS (POUR SATISFAIRE TSX) ---
+// ---- TYPES ----------------------------------------------------
 
-interface InputProps {
-    type?: string;
-    value: string | number;
-    // FIX: Typage explicite de l'événement de changement pour garantir 'e.target.value' est accessible
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; 
-    placeholder: string;
-    className?: string;
-    min?: string | number;
-    max?: string | number;
-    disabled?: boolean;
-}
+type Client = { id: string; nom: string; telephone: string };
+type Tarif = { typeArticle: string; service: string; prix: number };
+type TarifSet = Record<"standard" | "express", Tarif[]>;
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    children: React.ReactNode;
-    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void; 
-    className?: string;
-    variant?: "default" | "outline" | "ghost";
-    size?: "default" | "sm";
-    disabled?: boolean;
-    type?: "button" | "submit" | "reset";
-}
-
-interface SelectProps {
-    value: string;
-    // La fonction de changement renvoie uniquement la valeur (string)
-    onValueChange: (value: string) => void; 
-    children: React.ReactNode;
-}
-
-// --- SIMULATION DES COMPOSANTS UI DE BASE (FIXÉS POUR TSX) ---
-
-const Card: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className = "" }) => <div className={`rounded-xl border bg-card text-card-foreground shadow ${className}`}>{children}</div>;
-
-const Button: React.FC<ButtonProps> = ({ children, onClick, className = "", variant = "default", size = "default", disabled = false, type = "button", ...props }) => {
-    let baseStyle = "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
-    let style = "";
-    
-    if (variant === "outline") style = "border border-input bg-background hover:bg-accent hover:text-accent-foreground";
-    else if (variant === "ghost") style = "hover:bg-accent hover:text-accent-foreground";
-    else style = "bg-primary text-primary-foreground hover:bg-primary/90";
-
-    let sizeStyle = "h-10 px-4 py-2";
-    if (size === "sm") sizeStyle = "h-9 rounded-md px-3";
-
-    return (
-        <button type={type} onClick={onClick} className={`${baseStyle} ${style} ${sizeStyle} ${className}`} disabled={disabled} {...props}>
-            {children}
-        </button>
-    );
+type Article = {
+  id: string;
+  type: string;
+  service: string;
+  quantite: number;
+  prixUnitaire: number;
+  priceBasis: "standard" | "express";
 };
 
-// FIX: Input component avec typage strict
-const Input: React.FC<InputProps> = ({ type = "text", value, onChange, placeholder, className = "", min = undefined, max = undefined, disabled = false }) => (
-    <input
-        type={type}
-        value={value}
-        onChange={onChange} // L'événement passé ici est maintenant React.ChangeEvent<HTMLInputElement>
-        placeholder={placeholder}
-        min={min as string}
-        max={max as string}
-        className={`flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white ${className}`}
-        disabled={disabled}
-    />
-);
+// ---- DATA -----------------------------------------------------
 
-const Label: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className = "" }) => <label className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}>{children}</label>;
-
-// FIX: Select component avec typage strict
-const Select: React.FC<SelectProps> = ({ value, onValueChange, children }) => {
-    return (
-        <select 
-            value={value} 
-            // FIX: Typage de l'événement 'e' en React.ChangeEvent<HTMLSelectElement>
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onValueChange(e.target.value)} 
-            className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-        >
-            {children}
-        </select>
-    );
-};
-
-// Composants helpers pour Select
-const SelectTrigger: React.FC<{ children: React.ReactNode, className?: string }> = ({ children }) => <div className="hidden">{children}</div>; 
-const SelectContent: React.FC<{ children: React.ReactNode, className?: string }> = ({ children }) => <>{children}</>; 
-const SelectItem: React.FC<{ value: string, children: React.ReactNode }> = ({ value, children }) => <option value={value}>{children}</option>;
-const SelectValue: React.FC<{ placeholder: string }> = ({ placeholder }) => <option value="" disabled>{placeholder}</option>; 
-
-// --- SIMULATION DES DONNÉES ET TYPES (MISE À JOUR) ---
-type StatutCommande = "en_attente" | "en_cours" | "pret" | "livre" | "annule";
-type Client = { id: string; nom: string; };
-type Tarif = { typeArticle: string; service: string; prix: number; };
-type Article = { id: string; type: string; service: string; quantite: number; prixUnitaire: number; };
-type Commande = {
-    id: string; numero: string; clientId: string; articles: Article[]; total: number; totalNet: number; 
-    statut: StatutCommande; statutPaiement: string; montantPaye: number; dateCreation: Date; 
-    dateReception: string; dateLivraisonPrevue: string; 
-    remise: number;
-    typeCommande: "standard" | "express"; expressFee?: number;
-};
-
-const allClients: Client[] = [{ id: "C1", nom: "Dupont Jean" }, { id: "C2", nom: "Traoré Aminata" }];
-const allTarifs: Tarif[] = [
-    { typeArticle: "Chemise", service: "Lavage + Repassage", prix: 1500 },
-    { typeArticle: "Chemise", service: "Nettoyage à Sec", prix: 2500 },
-    { typeArticle: "Pantalon", service: "Lavage + Repassage", prix: 2000 },
-    { typeArticle: "Pantalon", service: "Nettoyage à Sec", prix: 3000 },
-    { typeArticle: "Robe", service: "Nettoyage à Sec", prix: 4500 },
+const clients: Client[] = [
+  { id: "1", nom: "Jean Dupont", telephone: "77 000 00 00" },
+  { id: "2", nom: "Aminata Traoré", telephone: "77 111 11 11" },
+  { id: "3", nom: "Moussa Diallo", telephone: "78 222 22 22" },
 ];
 
-const generateCommandeNumber = () => `CMD-${Date.now().toString().slice(-6)}`;
-const addCommande = (newCommande: Omit<Commande, 'id'>): Commande => {
-    console.log("Commande Enregistrée (Simulation):", newCommande);
-    return { ...newCommande, id: `ID-${Date.now()}` };
+const tarifs: TarifSet = {
+  standard: [
+    { typeArticle: "Chemise", service: "Lavage + Repassage", prix: 1500 },
+    { typeArticle: "Pantalon", service: "Lavage + Repassage", prix: 2000 },
+    { typeArticle: "Robe", service: "Nettoyage à Sec", prix: 4500 },
+  ],
+  express: [
+    { typeArticle: "Chemise", service: "Lavage + Repassage", prix: 2000 },
+    { typeArticle: "Pantalon", service: "Lavage + Repassage", prix: 2700 },
+    { typeArticle: "Robe", service: "Nettoyage à Sec", prix: 6000 },
+  ],
 };
 
-// --- LOGIQUE DE CALCUL DE DATE DE LIVRAISON ---
-const calculateDeliveryDate = (receptionDateString: string, type: "standard" | "express"): string => {
-    if (!receptionDateString) return '';
+// ---- HELPERS --------------------------------------------------
 
-    const date = new Date(receptionDateString);
-    if (isNaN(date.getTime())) return '';
+const getPrice = (t: string, s: string, mode: "standard" | "express") =>
+  tarifs[mode].find(x => x.typeArticle === t && x.service === s)?.prix ?? 0;
 
-    let daysToAdd = type === 'express' ? 1 : 3;
-    date.setDate(date.getDate() + daysToAdd);
-    
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-
-    return `${year}-${month}-${day}`;
+const calcDelivery = (date: string, mode: "standard" | "express") => {
+  if (mode === "express") return date;
+  const d = new Date(date);
+  d.setDate(d.getDate() + 3);
+  return d.toISOString().slice(0, 10);
 };
 
-// --- DÉFINITION DES PROPS DU COMPOSANT PRINCIPAL ---
-type NouvelleCommandeProps = {
-    onCancel?: () => void;
-    onSubmit?: (newCommande: Omit<Commande, 'id'>) => any;
-    clients?: Client[];
-    tarifs?: Tarif[];
-}
+// ---- UI ELEMENTS (épurés + premium) ---------------------------
 
-export default function NouvelleCommande(props: NouvelleCommandeProps = {}) {
-    const navigate = (path: string) => console.log(`Navigation simulée vers: ${path}`);
+const Card = ({ children, className = "" }: any) =>
+  <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 ${className}`}>
+    {children}
+  </div>;
 
-    const clients = props.clients ?? allClients;
-    const tarifs = props.tarifs ?? allTarifs;
+const Input = (p: any) =>
+  <input {...p}
+    className={`w-full border rounded-lg px-3 py-2 text-sm transition bg-white dark:bg-gray-700 dark:text-white ${p.className}`}
+  />;
 
-    // --- ÉTATS DE LA COMMANDE GLOBALE ---
-    const [selectedClient, setSelectedClient] = useState("");
-    const [dateReception, setDateReception] = useState(new Date().toISOString().split('T')[0]);
-    const [typeCommande, setTypeCommande] = useState<"standard" | "express">("standard");
-    const [remise, setRemise] = useState<number>(0); 
-    const [expressFee, setExpressFee] = useState<number>(0);
+const Select = ({ value, onChange, children }: any) =>
+  <select value={value} onChange={e => onChange(e.target.value)}
+    className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white">
+    {children}
+  </select>;
 
-    // --- ÉTATS DES ARTICLES ---
-    const [articles, setArticles] = useState<Article[]>([]);
-    const [currentArticle, setCurrentArticle] = useState({
-        type: "", 
-        service: "", 
-        quantite: 1,
-    });
-    
-    // Date de livraison automatique
-    const dateLivraisonPrevue = useMemo(() => {
-        return calculateDeliveryDate(dateReception, typeCommande);
-    }, [dateReception, typeCommande]);
+const Button = ({ children, className = "", ...props }: any) =>
+  <button {...props}
+    className={`px-4 py-2 rounded-lg text-white text-sm font-semibold shadow transition ${className}`}>
+    {children}
+  </button>;
 
-    const typesLinge = useMemo(() => [...new Set(tarifs.map(t => t.typeArticle))], [tarifs]);
-    const servicesLavage = useMemo(() => [...new Set(tarifs.map(t => t.service))], [tarifs]);
-    
-    const getPrixUnitaire = useCallback(() => {
-        const tarif = tarifs.find(
-            t => t.typeArticle === currentArticle.type && t.service === currentArticle.service
-        );
-        return tarif?.prix || 0;
-    }, [currentArticle.type, currentArticle.service, tarifs]);
+// ---- PRINCIPAL COMPONENT --------------------------------------
 
-    const addArticle = () => {
-        if (!selectedClient || !currentArticle.type || !currentArticle.service || currentArticle.quantite <= 0) {
-            console.error("Veuillez remplir les champs d'article correctement.");
-            return;
-        }
+export default function NouvelleCommande() {
 
-        const newArticle: Article = {
-            id: `a${articles.length + 1}-${Date.now()}`,
-            ...currentArticle,
-            prixUnitaire: getPrixUnitaire(),
-        };
+  const [cmd, setCmd] = useState({
+    client: "",
+    dateReception: new Date().toISOString().slice(0, 10),
+    type: "standard" as "standard" | "express",
+    remise: 0,
+  });
 
-        setArticles([...articles, newArticle]);
-        setCurrentArticle({ type: "", service: "", quantite: 1 }); 
-    };
+  const [draft, setDraft] = useState({ type: "", service: "", quantite: 1 });
+  const [articles, setArticles] = useState<Article[]>([]);
 
-    const removeArticle = (id: string) => {
-        setArticles(articles.filter(a => a.id !== id));
-    };
+  const types = [...new Set(tarifs.standard.map(t => t.typeArticle))];
+  const services = [...new Set(tarifs.standard.map(t => t.service))];
 
-    const totalArticles = useMemo(() => {
-        return articles.reduce((sum, article) => sum + (article.prixUnitaire * article.quantite), 0);
-    }, [articles]);
-    
-    const totalBrut = useMemo(() => {
-        const total = totalArticles + (typeCommande === 'express' ? expressFee : 0);
-        return total;
-    }, [totalArticles, typeCommande, expressFee]);
-    
-    const totalNet = useMemo(() => {
-        const net = totalBrut - remise;
-        return Math.max(0, net); 
-    }, [totalBrut, remise]);
-    
-    // --- HANDLERS DE MISE À JOUR (Typage automatique grâce aux InputProps/SelectProps) ---
+  const draftPrice = useMemo(
+    () => getPrice(draft.type, draft.service, cmd.type),
+    [draft, cmd.type]
+  );
 
-    const handleDateReceptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setDateReception(e.target.value);
-    };
+  // Ajouter linge
+  const addArticle = () => {
+    if (!draft.type || !draft.service) return;
+    setArticles(a => [
+      ...a,
+      {
+        id: crypto.randomUUID(),
+        ...draft,
+        prixUnitaire: draftPrice,
+        priceBasis: cmd.type,
+      },
+    ]);
+    setDraft({ type: "", service: "", quantite: 1 });
+  };
 
-    const handleExpressFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setExpressFee(parseFloat(e.target.value) || 0);
-    };
-
-    const handleRemiseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setRemise(parseFloat(e.target.value) || 0);
-    };
-    
-    const handleQuantiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setCurrentArticle({...currentArticle, quantite: parseInt(e.target.value) || 1});
-    };
-    
-    const handleTypeChange = (value: string) => {
-        setCurrentArticle({...currentArticle, type: value});
-    };
-    
-    const handleServiceChange = (value: string) => {
-        setCurrentArticle({...currentArticle, service: value});
-    };
-    
-    // --- ACTIONS DE COMMANDE ---
-    
-    const handleCancel = () => {
-        if (props.onCancel) return props.onCancel();
-        navigate("/commandes");
-    }
-
-    const handleSubmit = () => {
-        if (!selectedClient || articles.length === 0 || !dateLivraisonPrevue) {
-            alert("Veuillez sélectionner un client et ajouter des articles.");
-            return;
-        }
-
-        const newCommande: Omit<Commande, 'id'> = {
-            numero: generateCommandeNumber(),
-            clientId: selectedClient,
-            articles,
-            total: totalBrut, 
-            totalNet: totalNet, 
-            statut: "en_attente", 
-            statutPaiement: "non_paye",
-            montantPaye: 0,
-            dateCreation: new Date(),
-            dateReception: dateReception,
-            dateLivraisonPrevue: dateLivraisonPrevue,
-            remise: remise,
-            typeCommande: typeCommande,
-            expressFee: typeCommande === 'express' ? expressFee : 0,
-        };
-
-        if (props.onSubmit) {
-            props.onSubmit(newCommande);
-            return;
-        }
-
-        const savedCommande = addCommande(newCommande);
-        navigate(`/commandes/${savedCommande.id}`);
-    };
-
-    return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 sm:p-8 space-y-8 font-sans max-w-4xl mx-auto">
-            <div className="flex items-center justify-between border-b pb-4 mb-6">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-                    <ShoppingCart className="h-7 w-7 text-blue-600" /> Nouvelle Commande 📝
-                </h1>
-                <Button 
-                    variant="outline" 
-                    onClick={handleCancel} 
-                    className="gap-2 text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-gray-800"
-                >
-                    <X className="h-4 w-4" /> Annuler
-                </Button>
-            </div>
-
-            <Card className="p-6 shadow-2xl space-y-6">
-                
-                {/* 1. INFORMATIONS GÉNÉRALES ET CLIENT */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Client */}
-                    <div className="space-y-2">
-                        <Label>Client</Label>
-                        <Select value={selectedClient} onValueChange={setSelectedClient}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
-                            <SelectContent>
-                                {clients.map(client => (
-                                    <SelectItem key={client.id} value={client.id}>
-                                        {client.nom}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Date de Réception */}
-                    <div className="space-y-2">
-                        <Label>Date de Réception</Label>
-                        <div className="relative">
-                            <Input
-                                type="date"
-                                placeholder="Date de réception" 
-                                value={dateReception}
-                                // Utilisation du handler typé
-                                onChange={handleDateReceptionChange} 
-                                className="pl-3"
-                                disabled={articles.length > 0} 
-                            />
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Livraison prévue: <span className="font-bold text-blue-500">{dateLivraisonPrevue}</span> ({typeCommande === 'express' ? 'J+1 Express' : 'J+3 Standard'})
-                        </p>
-                    </div>
-
-                    {/* Type de Commande (Standard/Express) */}
-                    <div className="space-y-2">
-                        <Label>Type de Commande</Label>
-                        <Select value={typeCommande} onValueChange={(v: "standard" | "express") => {
-                            setTypeCommande(v);
-                            if (v === 'standard') setExpressFee(0);
-                        }}>
-                            <SelectTrigger><SelectValue placeholder="Choisir type" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="standard">Standard (Inclus)</SelectItem>
-                                <SelectItem value="express">Express (Coût supplémentaire)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    
-                    {/* Input Prix Express (Conditionnel) */}
-                    {typeCommande === 'express' && (
-                        <div className="space-y-2 md:col-span-2 p-2 rounded-lg bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700">
-                            <Label className="text-sm font-bold text-yellow-700 dark:text-yellow-300">Prime Commande Express (FCFA)</Label>
-                            <Input
-                                type="number"
-                                min="0"
-                                placeholder="Coût Express" 
-                                value={expressFee}
-                                // Utilisation du handler typé
-                                onChange={handleExpressFeeChange}
-                                className="text-right"
-                            />
-                        </div>
-                    )}
-                </div>
-
-                {/* 2. AJOUT D'ARTICLE */}
-                <Card className="p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-                    <h3 className="mb-4 font-semibold text-lg border-b pb-2 text-gray-800 dark:text-white">Ajouter un Article (Linge & Service)</h3>
-                    <div className="grid gap-4 sm:grid-cols-4">
-                        {/* Linge (Type) */}
-                        <div className="space-y-2 sm:col-span-1">
-                            <Label className="text-xs">Type de Linge</Label>
-                            <Select value={currentArticle.type} onValueChange={handleTypeChange}>
-                                <SelectTrigger><SelectValue placeholder="Linge" /></SelectTrigger>
-                                <SelectContent className="z-50">{typesLinge.map(type => (<SelectItem key={type} value={type}>{type}</SelectItem>))}</SelectContent>
-                            </Select>
-                        </div>
-                        {/* Service (Lavage) */}
-                        <div className="space-y-2 sm:col-span-1">
-                            <Label className="text-xs">Service de Lavage</Label>
-                            <Select value={currentArticle.service} onValueChange={handleServiceChange}>
-                                <SelectTrigger><SelectValue placeholder="Service" /></SelectTrigger>
-                                <SelectContent className="z-50">{servicesLavage.map(service => (<SelectItem key={service} value={service}>{service}</SelectItem>))}</SelectContent>
-                            </Select>
-                        </div>
-                        {/* Quantité */}
-                        <div className="space-y-2 sm:col-span-1">
-                            <Label className="text-xs">Quantité</Label>
-                            <Input
-                                type="number"
-                                min="1"
-                                placeholder="1" 
-                                value={currentArticle.quantite}
-                                // Utilisation du handler typé
-                                onChange={handleQuantiteChange}
-                            />
-                        </div>
-                        {/* Bouton Ajouter */}
-                        <div className="flex items-end sm:col-span-1">
-                            <Button type="button" onClick={addArticle} className="w-full bg-green-500 hover:bg-green-600" disabled={!currentArticle.type || !currentArticle.service}>
-                                <Plus className="mr-2 h-4 w-4" /> Ajouter
-                            </Button>
-                        </div>
-                    </div>
-                    {currentArticle.type && currentArticle.service && (
-                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                            Prix unitaire: **{getPrixUnitaire().toLocaleString()} FCFA**
-                        </p>
-                    )}
-                </Card>
-
-                {/* 3. RÉCAPITULATIF & TOTAL */}
-                <Card className="p-4 shadow-md border border-gray-200 dark:border-gray-700">
-                    <h3 className="mb-4 font-semibold text-lg text-gray-800 dark:text-white">Articles ({articles.length})</h3>
-                    {articles.length === 0 ? (
-                        <div className="text-center py-6 text-gray-500 dark:text-gray-400">
-                            <FileText className="h-6 w-6 mx-auto mb-2" />
-                            Liste des articles vide.
-                        </div>
-                    ) : (
-                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
-                            {articles.map(article => (
-                                <div key={article.id} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-700 p-3 border border-gray-200 dark:border-gray-600">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-gray-900 dark:text-white truncate">
-                                            {article.type} ({article.service})
-                                        </p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {article.quantite} x {article.prixUnitaire.toLocaleString()} = **{(article.quantite * article.prixUnitaire).toLocaleString()} FCFA**
-                                        </p>
-                                    </div>
-                                    <Button
-                                        variant="ghost" size="sm" className="text-red-500 hover:bg-red-50 p-2 ml-4"
-                                        onClick={() => removeArticle(article.id)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    
-                    {/* Totaux et Remise */}
-                    <div className="mt-6 border-t border-gray-300 dark:border-gray-600 pt-4 space-y-2">
-                        {/* Coût des articles */}
-                        <div className="flex justify-between text-lg font-medium text-gray-700 dark:text-gray-300">
-                            <span>Total Articles:</span>
-                            <span>{totalArticles.toLocaleString()} FCFA</span>
-                        </div>
-
-                        {/* Coût Express (si applicable) */}
-                        {typeCommande === 'express' && (
-                            <div className="flex justify-between text-lg font-medium text-yellow-700 dark:text-yellow-300 border-b border-dashed pb-1">
-                                <span>Prime Express:</span>
-                                <span>+{expressFee.toLocaleString()} FCFA</span>
-                            </div>
-                        )}
-
-                        {/* Total Brut */}
-                        <div className="flex justify-between text-xl font-bold text-gray-700 dark:text-gray-300">
-                            <span>Total Brut:</span>
-                            <span>{totalBrut.toLocaleString()} FCFA</span>
-                        </div>
-
-                        {/* Remise Input */}
-                        <div className="flex items-center justify-between">
-                            <Label className="text-lg font-semibold">Remise (FCFA)</Label>
-                            <div className="w-1/3">
-                                <Input
-                                    type="number"
-                                    min="0"
-                                    max={totalBrut} 
-                                    placeholder="0" 
-                                    value={remise}
-                                    // Utilisation du handler typé
-                                    onChange={handleRemiseChange}
-                                    className="text-right"
-                                />
-                            </div>
-                        </div>
-                        
-                        {/* TOTAL NET */}
-                        <div className="flex justify-between text-3xl font-extrabold pt-2">
-                            <span>TOTAL NET À PAYER:</span>
-                            <span className="text-blue-600 dark:text-blue-400">{totalNet.toLocaleString()} FCFA</span>
-                        </div>
-                    </div>
-                </Card>
-
-                {/* Bouton de Soumission */}
-                <Button onClick={handleSubmit} className="w-full bg-blue-600 hover:bg-blue-700 font-semibold text-lg py-3" disabled={articles.length === 0 || !selectedClient}>
-                    Confirmer et Créer la Commande
-                </Button>
-            </Card>
-        </div>
+  // Recalcul des prix selon Standard / Express
+  useEffect(() => {
+    setArticles(list =>
+      list.map(a => ({
+        ...a,
+        prixUnitaire: getPrice(a.type, a.service, cmd.type),
+        priceBasis: cmd.type,
+      }))
     );
+  }, [cmd.type]);
+
+  const total = useMemo(
+    () => articles.reduce((s, a) => s + a.prixUnitaire * a.quantite, 0),
+    [articles]
+  );
+
+  const livraison = calcDelivery(cmd.dateReception, cmd.type);
+  const totalNet = Math.max(0, total - cmd.remise);
+
+  return (
+    <div className="max-w-4xl mx-auto p-6 space-y-8">
+
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-extrabold flex items-center gap-2">
+          <ShoppingCart className="text-blue-600" /> Nouvelle commande
+        </h1>
+        <Button className="bg-red-600 hover:bg-red-700 flex items-center gap-1">
+          <X size={18}/> Annuler
+        </Button>
+      </div>
+
+      {/* --- INFOS CLIENT ET COMMANDES --- */}
+      <Card className="space-y-5">
+
+        <div className="grid md:grid-cols-2 gap-5">
+
+          {/* Client */}
+          <div className="space-y-1">
+            <label className="font-semibold flex items-center gap-2 text-sm">
+              <User size={16}/> Client
+            </label>
+            <Select value={cmd.client} onChange={v => setCmd({ ...cmd, client: v })}>
+              <option value="">Sélectionner un client</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.telephone}>
+                  {c.telephone} — {c.nom}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          {/* Date */}
+          <div className="space-y-1">
+            <label className="font-semibold flex items-center gap-2 text-sm"><Calendar size={16}/> Réception</label>
+            <Input type="date" value={cmd.dateReception}
+              onChange={e => setCmd({ ...cmd, dateReception: e.target.value })} />
+
+            <p className="text-xs mt-1 text-blue-600 font-medium">
+              Livraison prévue : {livraison}
+            </p>
+          </div>
+        </div>
+
+        {/* Type commande */}
+        <div className="space-y-1">
+          <label className="font-semibold text-sm">Type de commande</label>
+          <Select value={cmd.type} onChange={v => setCmd({ ...cmd, type: v })}>
+            <option value="standard">Standard (J+3)</option>
+            <option value="express">Express (Jour J)</option>
+          </Select>
+        </div>
+
+      </Card>
+
+      {/* --- AJOUT LINGE --- */}
+      <Card className="space-y-4">
+        <h2 className="text-lg font-bold flex items-center gap-2">
+            <Shirt size={20} className="text-blue-600" />
+        </h2>
+
+        <div className="grid md:grid-cols-4 gap-4">
+
+          {/* Linge */}
+          <Select value={draft.type}
+            onChange={v => setDraft({ ...draft, type: v })}>
+            <option value="">Linge</option>
+            {types.map(l => <option key={l}>{l}</option>)}
+          </Select>
+
+          {/* Service */}
+          <Select value={draft.service}
+            onChange={v => setDraft({ ...draft, service: v })}>
+            <option value="">Service</option>
+            {services.map(s => <option key={s}>{s}</option>)}
+          </Select>
+
+          {/* Quantité */}
+          <Input type="number" min={1}
+            value={draft.quantite}
+            onChange={e => setDraft({ ...draft, quantite: +e.target.value })} />
+
+          {/* Add button */}
+          <Button className="bg-green-600 hover:bg-green-700 flex items-center justify-center gap-1"
+            onClick={addArticle}>
+            <Plus size={16}/> Ajouter
+          </Button>
+
+        </div>
+
+        {draft.type && draft.service && (
+          <p className={`text-sm font-semibold ${cmd.type === "express" ? "text-red-600" : "text-gray-700"}`}>
+            Prix unitaire ({cmd.type}) : {draftPrice.toLocaleString()} FCFA
+          </p>
+        )}
+      </Card>
+
+      {/* --- LISTE ARTICLES --- */}
+      <Card className="space-y-4">
+        <h2 className="text-lg font-bold">Articles ({articles.length})</h2>
+
+        <div className="space-y-3 max-h-64 overflow-y-auto">
+          {articles.map(a => (
+            <div key={a.id}
+              className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border">
+
+              <div>
+                <p className="font-semibold">{a.type} — {a.service}</p>
+                <p className={`text-sm ${a.priceBasis === "express"
+                    ? "text-red-600 font-semibold"
+                    : "text-gray-600"}`}>
+                  {a.quantite} × {a.prixUnitaire.toLocaleString()} FCFA
+                </p>
+              </div>
+
+              <button
+                onClick={() => setArticles(x => x.filter(i => i.id !== a.id))}
+                className="text-red-600 hover:text-red-700">
+                <Trash2 size={18}/>
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Totaux */}
+        <div className="space-y-2 border-t pt-3">
+          <div className="flex justify-between font-semibold text-lg">
+            <span>Total :</span> 
+            <span>{total.toLocaleString()} FCFA</span>
+          </div>
+
+          <Input type="number" min={0} value={cmd.remise}
+            onChange={e => setCmd({ ...cmd, remise: +e.target.value })} />
+
+          <div className="flex justify-between font-bold text-2xl text-blue-600 mt-2">
+            <span>Total Net :</span> 
+            <span>{totalNet.toLocaleString()} FCFA</span>
+          </div>
+        </div>
+      </Card>
+
+      <Button className="bg-blue-600 w-full py-3 hover:bg-blue-700 text-lg">
+        Confirmer la commande
+      </Button>
+
+    </div>
+  );
 }
