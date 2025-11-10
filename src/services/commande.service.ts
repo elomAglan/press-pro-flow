@@ -62,3 +62,23 @@ export async function updateCommande(id: number, commandeData: any) {
 export async function deleteCommande(id: number) {
   return apiFetch(`/api/commande/${id}`, { method: "DELETE" });
 }
+
+
+
+
+// ==================== 📊 STATISTIQUES ====================
+
+// 🔹 Nombre total de commandes par jour
+export async function getCommandesTotalParJour() {
+  return apiFetch("/api/commande/total", { method: "GET" });
+}
+
+// 🔹 Nombre de commandes livrées par jour
+export async function getCommandesLivreeParJour() {
+  return apiFetch("/api/commande/livree", { method: "GET" });
+}
+
+// 🔹 Nombre de commandes en cours par jour
+export async function getCommandesEnCoursParJour() {
+  return apiFetch("/api/commande/cours", { method: "GET" });
+}
