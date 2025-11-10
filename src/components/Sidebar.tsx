@@ -25,7 +25,6 @@ export function Sidebar({ isCollapsed, setIsCollapsed }) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Clients", href: "/clients", icon: Users },
     { name: "Commandes", href: "/commandes", icon: ShoppingBag },
-    { name: "Paiements", href: "/paiements", icon: CreditCard },
     { name: "Rapports", href: "/rapports", icon: BarChart3 },
     { name: "Paramètres", href: "/parametres", icon: Settings },
   ];
