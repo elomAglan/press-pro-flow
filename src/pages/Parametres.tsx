@@ -8,7 +8,6 @@ import {
   deletePressing,
   Pressing
 } from "../services/pressing.service";
-// CORRECTION : Remplacement de PriceTags par Tag, qui est un membre exporté
 import { Loader2, Pencil, Plus, Trash2, Mail, Phone, MapPin, Building2, Tag } from "lucide-react";
 
 export default function Parametres() {
@@ -18,7 +17,7 @@ export default function Parametres() {
   const [error, setError] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
 
-  const navigate = useNavigate(); // Initialisation de la navigation
+  const navigate = useNavigate();
 
   const [form, setForm] = useState<Pressing>({
     nom: "",
@@ -34,11 +33,7 @@ export default function Parametres() {
     setError(null);
     try {
       const p = await getMyPressing();
-      if (p) {
-        setPressing(p);
-      } else {
-        setPressing(null);
-      }
+      setPressing(p || null);
     } catch (e: any) {
       console.error("Erreur récupération pressing:", e);
       if (e.message?.includes("404") || e.status === 404 || e.message?.includes("Not Found")) {
@@ -81,7 +76,6 @@ export default function Parametres() {
 
     try {
       let saved: Pressing;
-
       if (dialogMode === "edit") {
         if (!pressing?.id) throw new Error("Impossible de modifier : pressing introuvable");
         saved = await updatePressing(pressing.id, form);
@@ -126,24 +120,24 @@ export default function Parametres() {
 
   // Fonction pour naviguer vers la page Tarifs
   const handleGoToTarifs = () => {
-    // Remplacez '/tarifs' par le chemin réel de votre page Tarifs si différent
     navigate('/tarifs');
   };
 
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    // FIX SCROLL: Retrait de la classe min-h-screen
+    <div className="p-6 bg-white">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* En-tête */}
+        
+        {/* En-tête avec les boutons d'action groupés */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Paramètres du Pressing</h1>
             <p className="text-gray-500 mt-1">Gérez les informations de votre établissement</p>
           </div>
 
-          {/* NOUVELLE SECTION: Boutons Tarifs et Actualiser */}
           <div className="flex gap-2">
-            {pressing && ( // Afficher le bouton Tarifs uniquement si un pressing est configuré
+            {/* Bouton Tarifs (visible uniquement si pressing existe) */}
+            {pressing && (
               <button
                 onClick={handleGoToTarifs}
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
@@ -153,6 +147,7 @@ export default function Parametres() {
               </button>
             )}
 
+            {/* Bouton Actualiser */}
             <button
               onClick={loadPressing}
               disabled={isLoading}
@@ -173,10 +168,10 @@ export default function Parametres() {
               Actualiser
             </button>
           </div>
-          {/* FIN NOUVELLE SECTION */}
         </div>
+        
+        {/* --- */}
 
-        {/* Message d'erreur */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             <p className="font-medium">Erreur</p>
@@ -184,10 +179,11 @@ export default function Parametres() {
           </div>
         )}
 
-        {/* Zone principale */}
+        {/* Affichage du pressing configuré */}
         {pressing ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-24"></div>
+            {/* Rétablissement d'un fond de couleur pour l'en-tête de la carte */}
+            <div className="bg-blue-500 h-24"></div> 
 
             <div className="p-6 -mt-12">
               <div className="flex items-start justify-between">
@@ -207,21 +203,9 @@ export default function Parametres() {
                     {pressing.email && <p className="text-gray-500 text-sm mt-1">{pressing.email}</p>}
                   </div>
                 </div>
-
-                {/* Boutons Modifier / Supprimer (maintenus pour gérer les détails du pressing) */}
-                <div className="flex gap-2 mt-8">
-                  {/* Bouton Tarifs (Déplacé dans l'en-tête, commenté ici) */}
-                  {/* <button
-                    onClick={handleGoToTarifs}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
-                    title="Gérer les tarifs du pressing"
-                  >
-                    <Tag size={16} /> Tarifs
-                  </button> */}
-                  
-                  {/* Boutons Modifier/Supprimer/etc. ici si vous les voulez toujours dans cette zone */}
                 
-                </div>
+
+
               </div>
 
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -260,6 +244,7 @@ export default function Parametres() {
             </div>
           </div>
         ) : (
+          /* Affichage "Aucun pressing configuré" */
           !isLoading && (
             <div className="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-12 text-center">
               <div className="flex flex-col items-center">
@@ -280,10 +265,13 @@ export default function Parametres() {
             </div>
           )
         )}
+        
+        {/* --- */}
 
-        {/* Modal Ajouter / Modifier (Code inchangé) */}
+        {/* Modal Ajouter / Modifier */}
         {isDialogOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            {/* NOTE : max-h-[90vh] overflow-y-auto est conservé pour garantir que la modale scroll si le contenu est trop long */}
             <div className="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-900">

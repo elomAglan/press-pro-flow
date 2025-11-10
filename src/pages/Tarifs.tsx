@@ -102,7 +102,8 @@ const TarifFormModal: React.FC<TarifFormModalProps> = ({ tarifToEdit, onClose, o
           </div>
 
           <div>
-            <label htmlFor="prix" className="block text-sm font-medium text-gray-700">Prix (€)</label>
+            {/* MODIFICATION : Changement de l'unité de prix en CFA */}
+            <label htmlFor="prix" className="block text-sm font-medium text-gray-700">Prix (CFA)</label>
             <input
               type="number"
               id="prix"
@@ -110,8 +111,8 @@ const TarifFormModal: React.FC<TarifFormModalProps> = ({ tarifToEdit, onClose, o
               value={formData.prix || ''}
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
-              placeholder="Ex: 8.50"
-              step="0.01"
+              placeholder="Ex: 5000"
+              step="1" // Généralement, les prix en CFA n'ont pas de décimales (peut être ajusté si nécessaire)
               required
             />
           </div>
@@ -201,7 +202,7 @@ export default function Tarifs() {
   const handleGoBack = () => navigate(-1);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -229,26 +230,29 @@ export default function Tarifs() {
           </button>
         </div>
 
-        <hr className="my-6" />
-
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-x-auto"> {/* overflow-x-auto pour petit écran, mais plus de scroll vertical forcé */}
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50"> {/* Retrait de 'sticky top-0 z-10' pour ne pas interférer avec le scroll de la page principale */}
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">article</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix (€)</th>
+                {/* MODIFICATION : Prix en CFA */}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix (CFA)</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
+            {/* RETRAIT DU CONTENEUR DE DÉFILEMENT INTERNE */}
             <tbody className="bg-white divide-y divide-gray-200">
               {tarifs.map((tarif) => (
                 <tr key={tarif.id} className="hover:bg-purple-50 transition duration-150">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{tarif.article}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{tarif.service}</td>
+                  {/* MODIFICATION : Affichage du prix et ajout de "CFA" */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold flex items-center gap-1">
+                    {/* DollarSign peut rester comme icône de prix générique, mais vous pouvez le changer si vous avez une icône CFA */}
                     <DollarSign size={14} className="text-green-600"/>
-                    {tarif.prix.toFixed(2)}
+                    {/* toFixed(0) si vous utilisez step="1" pour éviter les décimales, sinon toFixed(2) */}
+                    {tarif.prix.toFixed(0)} CFA 
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
@@ -270,6 +274,7 @@ export default function Tarifs() {
               ))}
             </tbody>
           </table>
+
           {tarifs.length === 0 && (
             <div className="p-6 text-center text-gray-500">
               <p className="font-medium">Aucun tarif défini.</p>
