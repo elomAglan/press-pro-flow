@@ -19,6 +19,10 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import Tarifs from "./pages/Tarifs";
+import ChargePage from './pages/ChargePage';
+
+
+
 
 const queryClient = new QueryClient();
 
@@ -50,6 +54,7 @@ const App: React.FC = () => (
           <Route path="/commandes" element={<Layout><Commandes /></Layout>} />
           <Route path="/commandes/nouvelle" element={<Layout><NouvelleCommandeWrapper /></Layout>} />
           <Route path="/commandes/:id" element={<Layout><CommandeDetail /></Layout>} />
+          <Route path="/charge" element={<Layout><ChargePage /></Layout>} />
 
           <Route path="/paiements" element={<Layout><Paiements /></Layout>} />
           <Route path="/parametres" element={<Layout><Parametres /></Layout>} />
