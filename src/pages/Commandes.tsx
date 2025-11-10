@@ -9,7 +9,7 @@ import { Plus, Search, FileText, Calendar, List, X } from "lucide-react";
 
 
 // Ces lignes ont été supprimées :
-import NouvelleCommande from "./NouvelleCommande";
+import NouvelleCommande from "./NouvelleCommande.tsx";
 import CommandeDetails from "./CommandeDetails";
 // --- DÉFINITIONS ET DONNÉES SIMULÉES (Réutilisées) ---
 

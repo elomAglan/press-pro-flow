@@ -10,7 +10,7 @@ import Compte from "./pages/Compte";
 import Clients from "./pages/Clients";
 import Commandes from "./pages/Commandes";
 import CommandeDetail from "./pages/CommandeDetails";
-import NouvelleCommande from "./pages/NouvelleCommande";
+import NouvelleCommande from "./pages/NouvelleCommande.tsx";
 import Paiements from "./pages/Paiements";
 import Parametres from "./pages/Parametres";
 import Rapports from "./pages/Rapports";
