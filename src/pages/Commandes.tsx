@@ -18,25 +18,31 @@ export default function Commandes() {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const data = await getAllCommandes();
-        setCommandes(data);
-      } catch (e) {
-        console.error("Erreur chargement commandes:", e);
-      }
-    }
-    fetchData();
-  }, []);
+  // 🔹 Charger les commandes dès le montage
+useEffect(() => {
+  async function fetchData() {
+    try {
+      const data = await getAllCommandes();
 
+      // ✅ Tri uniquement par ID décroissant
+      const sorted = [...data].sort((a, b) => b.id - a.id);
+
+      setCommandes(sorted);
+    } catch (e) {
+      console.error("Erreur chargement commandes:", e);
+    }
+  }
+  fetchData();
+}, []);
+
+
+  // 🔹 Filtrage local
   const filtered = commandes.filter((c) => {
     const matchSearch =
       c.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.article.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchDate = !filterDate || c.dateReception === filterDate;
-
     return matchSearch && matchDate;
   });
 
@@ -46,8 +52,7 @@ export default function Commandes() {
 
   return (
     <div className="p-6 space-y-6">
-
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <List className="text-blue-600" /> Commandes
@@ -60,7 +65,7 @@ export default function Commandes() {
         </Button>
       </div>
 
-      {/* Filtres */}
+      {/* FILTRES */}
       <Card className="p-4 flex gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -83,7 +88,7 @@ export default function Commandes() {
         </div>
       </Card>
 
-      {/* Tableau */}
+      {/* TABLEAU */}
       <Card className="overflow-x-auto">
         <table className="min-w-full border-collapse">
           <thead className="bg-gray-100">
@@ -105,7 +110,7 @@ export default function Commandes() {
                 <tr
                   key={c.id}
                   className="border-t hover:bg-gray-50 cursor-pointer"
-                  onClick={() => navigate(`/commandes/${c.id}`)} // ✅ CLICK GO DETAILS
+                  onClick={() => navigate(`/commandes/${c.id}`)}
                 >
                   <td className="px-4 py-2">{c.id}</td>
                   <td className="px-4 py-2">{c.clientNom}</td>
