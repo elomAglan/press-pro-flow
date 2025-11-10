@@ -2,27 +2,17 @@ import React, { useState, useMemo, useEffect } from "react";
 import { getAllCommandes } from "../services/commande.service.ts";
 import NouvelleCommande from "./NouvelleCommande";
 
-// Imports UI
-import { Card, CardHeader, CardContent } from "../components/ui/card";
+// UI
+import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Badge } from "../components/ui/badge";
 
-// Icônes
-import { List, Plus, Search, Calendar, FileText } from "lucide-react";
+// Icons
+import { List, Plus, Search, Calendar, FileText, ArrowLeft } from "lucide-react";
 
-// --- Interfaces ---
-interface Client {
-  id: string;
-  nom: string;
-  telephone: string;
-  email: string;
-  adresse: string;
-  createdAt: Date;
-  status: string;
-}
-
+// --- Types ---
 interface Article {
   id: string;
   type: string;
@@ -43,223 +33,210 @@ export interface Commande {
   statut: StatutCommande;
   statutPaiement: StatutPaiement;
   montantPaye: number;
-  dateCreation: Date;
+  dateCreation: string | Date;
 }
 
 type View = "list" | "create" | "details";
 
-// --- Fonctions utilitaires ---
-const getClientName = (clientId: string) => clientId; // à remplacer par un vrai fetch
-const getArticleServices = (articles: Article[]) =>
-  Array.from(new Set(articles.map((a) => a.service))).join(", ");
-const getArticleTypes = (articles: Article[]) => {
-  const counts = articles.reduce((acc, a) => {
-    acc[a.type] = (acc[a.type] || 0) + a.quantite;
-    return acc;
-  }, {} as Record<string, number>);
-  return Object.entries(counts)
-    .map(([type, count]) => `${type} (${count})`)
-    .join(", ");
-};
+// Helpers
+const getClientName = (clientId: string) => clientId; // à améliorer
 const getStatutBadge = (statut: StatutCommande) => {
-  let classes = "uppercase text-xs font-semibold px-2 py-0.5 rounded-full border";
+  const base = "uppercase text-xs font-semibold px-2 py-0.5 rounded-full border";
   switch (statut) {
-    case "pret":
-      return <Badge className={`${classes} bg-green-100 text-green-700 border-green-300`}>{statut}</Badge>;
-    case "livre":
-      return <Badge className={`${classes} bg-green-200 text-green-800 border-green-400`}>{statut}</Badge>;
-    case "en_cours":
-      return <Badge className={`${classes} bg-blue-100 text-blue-700 border-blue-300`}>{statut}</Badge>;
-    default:
-      return <Badge className={`${classes} bg-yellow-100 text-yellow-700 border-yellow-300`}>{statut}</Badge>;
+    case "pret": return <Badge className={`${base} bg-green-100 text-green-700 border-green-300`}>Prêt</Badge>;
+    case "livre": return <Badge className={`${base} bg-green-200 text-green-800 border-green-400`}>Livré</Badge>;
+    case "en_cours": return <Badge className={`${base} bg-blue-100 text-blue-700 border-blue-300`}>En cours</Badge>;
+    default: return <Badge className={`${base} bg-yellow-100 text-yellow-700 border-yellow-300`}>En attente</Badge>;
   }
 };
 
+// ✅✅✅ VUE DETAILS
+function CommandeDetails({
+  commande,
+  onBack
+}: {
+  commande: Commande;
+  onBack: () => void;
+}) {
+  const reste = commande.total - commande.montantPaye;
+
+  return (
+    <div className="space-y-6 p-6">
+      <Button onClick={onBack} className="flex items-center gap-2 bg-gray-700 text-white hover:bg-gray-800">
+        <ArrowLeft size={18} /> Retour
+      </Button>
+
+      <Card className="p-6 space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold text-blue-600">Commande #{commande.numero}</h2>
+          <p className="text-gray-500">
+            Créée le {new Date(commande.dateCreation).toLocaleDateString()}
+          </p>
+        </div>
+
+        <div className="border-l-4 border-blue-500 pl-4">
+          <h3 className="text-xl font-bold mb-2">Client</h3>
+          <p>{getClientName(commande.clientId)}</p>
+        </div>
+
+        <div>
+          <h3 className="text-xl font-bold mb-3">Articles</h3>
+          <div className="space-y-3">
+            {commande.articles.map(a => (
+              <div key={a.id} className="flex justify-between bg-gray-100 p-3 rounded-lg border">
+                <div>
+                  <p className="font-bold">{a.type} — {a.service}</p>
+                  <p className="text-xs text-gray-500">Quantité : {a.quantite}</p>
+                </div>
+                <p className="font-semibold text-blue-600">
+                  {(a.prixUnitaire * a.quantite).toLocaleString()} FCFA
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+          <div className="flex justify-between text-lg">
+            <span>Total :</span>
+            <span className="font-bold">{commande.total.toLocaleString()} FCFA</span>
+          </div>
+
+          <div className="flex justify-between text-lg">
+            <span>Payé :</span>
+            <span className="font-bold text-green-600">
+              {commande.montantPaye.toLocaleString()} FCFA
+            </span>
+          </div>
+
+          <div className={`flex justify-between text-xl font-bold ${reste > 0 ? "text-red-600" : "text-green-700"}`}>
+            <span>Reste :</span>
+            <span>{reste.toLocaleString()} FCFA</span>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-xl font-bold mb-2">Statut</h3>
+          {getStatutBadge(commande.statut)}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ✅✅✅ VUE PRINCIPALE
 export default function Commandes() {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [currentView, setCurrentView] = useState<View>("list");
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
 
-  // États de filtre
+  // filters
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<StatutCommande | "all">("all");
-  const [filterDate, setFilterDate] = useState<string>("");
+  const [filterDate, setFilterDate] = useState("");
 
-  // 🔹 Charger les commandes
   useEffect(() => {
-    async function fetchCommandes() {
-      try {
-        const data = await getAllCommandes();
-        const commandesWithDates = data.map((c: any) => ({ ...c, dateCreation: new Date(c.dateCreation) }));
-        setCommandes(commandesWithDates);
-      } catch (error) {
-        console.error("Erreur lors du chargement des commandes :", error);
-      }
-    }
-    fetchCommandes();
+    getAllCommandes().then((data) => {
+      const formatted = data.map((c: any) => ({
+        ...c,
+        dateCreation: new Date(c.dateCreation)
+      }));
+      setCommandes(formatted);
+    });
   }, []);
 
-  // 🔹 Filtrage des commandes
-  const filteredCommandes = useMemo(() => {
-    return commandes
-      .filter((c) => {
-        const clientName = getClientName(c.clientId).toLowerCase();
-        const lowerSearch = searchTerm.toLowerCase();
-        const dateCreation = new Date(c.dateCreation).toISOString().split("T")[0];
+  const filtered = useMemo(() => {
+    return commandes.filter(c => {
+      const matchSearch = c.numero.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchStatus = filterStatus === "all" || c.statut === filterStatus;
+      const matchDate =
+        !filterDate ||
+        new Date(c.dateCreation).toISOString().split("T")[0] === filterDate;
 
-        const matchesSearch = c.numero.toLowerCase().includes(lowerSearch) || clientName.includes(lowerSearch);
-        const matchesStatus = filterStatus === "all" || c.statut === filterStatus;
-        const matchesDate = !filterDate || dateCreation === filterDate;
-
-        return matchesSearch && matchesStatus && matchesDate;
-      })
-      .sort((a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime());
+      return matchSearch && matchStatus && matchDate;
+    });
   }, [commandes, searchTerm, filterStatus, filterDate]);
 
-  const allStatuses: { value: StatutCommande | "all"; label: string }[] = [
-    { value: "all", label: "Tous les statuts" },
-    { value: "en_attente", label: "En attente" },
-    { value: "en_cours", label: "En cours" },
-    { value: "pret", label: "Prêt" },
-    { value: "livre", label: "Livré" },
-  ];
+  // 🟥 VUE CREATE
+  if (currentView === "create") {
+    return <NouvelleCommande onCancel={() => setCurrentView("list")} />;
+  }
 
-  // --- Rendu principal ---
+  // 🟦 VUE DETAILS
+  if (currentView === "details" && selectedCommandeId) {
+    const commande = commandes.find((c) => c.id === selectedCommandeId);
+    if (!commande) return null;
+
+    return <CommandeDetails commande={commande} onBack={() => setCurrentView("list")} />;
+  }
+
+  // ✅ VUE LISTE
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 sm:p-8 space-y-8 font-sans">
-      {currentView === "list" && (
-        <>
-          {/* HEADER */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-4xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-                <List className="h-7 w-7 text-blue-600" /> Commandes
-              </h1>
-              <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400 mt-1">
-                Historique et gestion des ordres de nettoyage (
-                <strong className="text-blue-600 dark:text-blue-400">
-                  Affichés: {filteredCommandes.length} / Total: {commandes.length}
-                </strong>
-                )
-              </p>
-            </div>
+    <div className="p-6 space-y-6">
 
-            <Button
-              onClick={() => setCurrentView("create")}
-              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all text-xs sm:text-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Nouvelle Commande</span>
-              <span className="inline sm:hidden">Ajouter</span>
-            </Button>
-          </div>
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <List className="text-blue-600" /> Commandes
+        </h1>
 
-          {/* FILTRES */}
-          <Card className="p-4 shadow-xl border border-gray-100 dark:border-gray-700">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-              <div className="relative md:col-span-2">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-                <Input
-                  placeholder="Rechercher par N° Commande ou nom de client..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+        <Button className="bg-blue-600 text-white" onClick={() => setCurrentView("create")}>
+          <Plus size={16} /> Nouvelle Commande
+        </Button>
+      </div>
 
-              <Select value={filterStatus} onValueChange={(v: StatutCommande | "all") => setFilterStatus(v)}>
-                <SelectTrigger className="w-full h-10 border-gray-300 dark:border-gray-600">
-                  <SelectValue placeholder="Filtrer par statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  {allStatuses.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      {/* Filters */}
+      <Card className="p-4 grid grid-cols-3 gap-4">
+        <div className="relative col-span-2">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Input className="pl-10" placeholder="Rechercher..." onChange={(e) => setSearchTerm(e.target.value)} />
+        </div>
 
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-                <Input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="pl-10 h-10 border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-          </Card>
+        <div className="relative">
+          <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Input className="pl-10" type="date" onChange={(e) => setFilterDate(e.target.value)} />
+        </div>
+      </Card>
 
-          {/* TABLEAU COMMANDES */}
-          <Card className="p-0 overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700">
-            <div className="w-full overflow-x-auto max-h-[70vh] overflow-y-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 shadow-sm z-10">
-                  <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%]">
-                      N° Commande
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[20%]">
-                      Client
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[20%] hidden sm:table-cell">
-                      Type de Lavage
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%] hidden lg:table-cell">
-                      Type de Commande
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%]">
-                      Statut
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%]">
-                      Sous-total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredCommandes.length > 0 ? (
-                    filteredCommandes.map((c) => (
-                      <tr
-                        key={c.id}
-                        className="hover:bg-gray-100 dark:hover:bg-gray-800 transition duration-150 cursor-pointer"
-                        onClick={() => {
-                          setSelectedCommandeId(c.id);
-                          setCurrentView("details");
-                        }}
-                      >
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">{c.numero}</div>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">{getClientName(c.clientId)}</td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-normal hidden sm:table-cell">
-                          {getArticleServices(c.articles)}
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-normal hidden lg:table-cell">
-                          {getArticleTypes(c.articles)}
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">{getStatutBadge(c.statut)}</td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right">{c.total.toLocaleString()} FCFA</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                        <FileText className="h-8 w-8 mx-auto mb-2" /> Aucune commande trouvée.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </>
-      )}
+      {/* Table */}
+      <Card className="overflow-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-4 py-2 text-left">Numéro</th>
+              <th className="px-4 py-2 text-left">Client</th>
+              <th className="px-4 py-2 text-left">Statut</th>
+              <th className="px-4 py-2 text-right">Total</th>
+            </tr>
+          </thead>
 
-      {currentView === "create" && <NouvelleCommande onCancel={() => setCurrentView("list")} />}
-
-      {/* TODO: Ajouter view "details" si nécessaire */}
+          <tbody>
+            {filtered.length > 0 ? (
+              filtered.map((c) => (
+                <tr
+                  key={c.id}
+                  className="border-b hover:bg-gray-50 cursor-pointer"
+                  onClick={() => {
+                    setSelectedCommandeId(c.id);
+                    setCurrentView("details");
+                  }}
+                >
+                  <td className="px-4 py-2 font-semibold text-blue-600">{c.numero}</td>
+                  <td className="px-4 py-2">{getClientName(c.clientId)}</td>
+                  <td className="px-4 py-2">{getStatutBadge(c.statut)}</td>
+                  <td className="px-4 py-2 text-right">{c.total.toLocaleString()} FCFA</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="text-center py-6 text-gray-500">
+                  <FileText className="mx-auto mb-2" /> Aucune commande trouvée
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
     </div>
   );
 }
