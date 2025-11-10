@@ -23,7 +23,7 @@ const calcDelivery = (date: string, mode: "standard" | "express") => {
   return d.toISOString().slice(0, 10);
 };
 
-// ---- UI COMPONENTS -------------------------------------------
+// ---- UI COMPONENTS --------------------------------------------
 const Card = ({ children, className = "" }: any) => (
   <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 ${className}`}>
     {children}
@@ -56,7 +56,7 @@ const Button = ({ children, className = "", ...props }: any) => (
   </button>
 );
 
-// ---- MAIN COMPONENT ------------------------------------------
+// ---- MAIN COMPONENT -------------------------------------------
 export default function NouvelleCommande() {
   const [cmd, setCmd] = useState({
     client: "",
@@ -69,7 +69,7 @@ export default function NouvelleCommande() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [tarifs, setTarifs] = useState<Parametre[]>([]);
-  const [loading, setLoading] = useState(false); // 🔹 état du spinner
+  const [loading, setLoading] = useState(false);
 
   // Charger clients & paramètres
   useEffect(() => {
@@ -102,7 +102,7 @@ export default function NouvelleCommande() {
     [draft, cmd.type, tarifs]
   );
 
-  // Ajouter article
+  // Ajouter un article
   const addArticle = () => {
     if (!draft.type || !draft.service) return;
 
@@ -137,7 +137,7 @@ export default function NouvelleCommande() {
   const totalNet = Math.max(0, total - cmd.remise);
   const livraison = calcDelivery(cmd.dateReception, cmd.type);
 
-  // Soumission
+  // ---- Fonction principale d'envoi et ouverture PDF ----
   const handleSubmit = async () => {
     if (!cmd.client || articles.length === 0) {
       alert("Veuillez sélectionner un client et ajouter au moins un article.");
@@ -145,7 +145,7 @@ export default function NouvelleCommande() {
     }
 
     try {
-      setLoading(true); // 🔹 spinner ON
+      setLoading(true);
 
       const firstArticle = articles[0];
       const tarif = tarifs.find(
@@ -165,24 +165,26 @@ export default function NouvelleCommande() {
         express: cmd.type === "express",
       };
 
-      const created = await apiFetch("/api/commande", {
+      // ✅ Appel unique vers /api/commande/pdf
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(body),
       });
 
-      // ✅ Ouvrir le PDF
-      const pdfResponse = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf/${created.id}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("authToken") || ""}` },
-        }
-      );
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Erreur lors du téléchargement du PDF");
+      }
 
-      if (!pdfResponse.ok) throw new Error("Erreur lors du téléchargement du PDF");
-
-      const blob = await pdfResponse.blob();
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       window.open(url, "_blank");
+      window.URL.revokeObjectURL(url);
 
       // 🧹 Réinitialisation
       setCmd({
@@ -196,10 +198,11 @@ export default function NouvelleCommande() {
       console.error(err);
       alert(err.message || "❌ Erreur lors de la création de la commande");
     } finally {
-      setLoading(false); // 🔹 spinner OFF
+      setLoading(false);
     }
   };
 
+  // ---- RENDER -------------------------------------------------
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       {/* HEADER */}

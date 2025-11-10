@@ -9,6 +9,7 @@ export async function getAllCommandes() {
 
 
 // 🔹 Créer une commande et télécharger le PDF directement
+// src/services/commande.service.ts
 export async function createCommandeAvecPdf(commandeData: any) {
   const token = localStorage.getItem("authToken");
 
@@ -23,19 +24,14 @@ export async function createCommandeAvecPdf(commandeData: any) {
 
   if (!response.ok) {
     const text = await response.text();
-    console.error("Fetch PDF erreur", response.status, text);
+    console.error("Erreur PDF:", response.status, text);
     throw new Error(`Erreur serveur: ${text || response.statusText}`);
   }
 
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "commande.pdf";
-  a.click();
+  window.open(url, "_blank"); // ouvre directement dans un nouvel onglet
   window.URL.revokeObjectURL(url);
-
-  return true;
 }
 
 

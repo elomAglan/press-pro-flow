@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom"; 
 // Import de User, Search retirés
-import { LayoutDashboard, Users, ShoppingBag, CreditCard, Settings, BarChart3, Shirt, Menu, X, LogOut, Bell, ChevronDown, Sun, Moon } from "lucide-react"; 
+import { LayoutDashboard, Users, ShoppingBag, Shirt, Menu, X, LogOut, Bell, ChevronDown, Sun, Moon } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 
 // MODIFICATION: Accepter isCollapsed et setIsCollapsed via les props
@@ -25,8 +25,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Clients", href: "/clients", icon: Users },
     { name: "Commandes", href: "/commandes", icon: ShoppingBag },
-    { name: "Rapports", href: "/rapports", icon: BarChart3 },
-    { name: "Paramètres", href: "/parametres", icon: Settings },
+    { name: "Pressing", href: "/parametres", icon: Shirt },
   ];
 
   const handleLogout = () => {
