@@ -71,3 +71,34 @@ export async function getCommandesLivreeParJour() {
 export async function getCommandesEnCoursParJour() {
   return apiFetch("/api/commande/cours", { method: "GET" });
 }
+
+
+
+// =========================================================
+// 💰 CHIFFRE D’AFFAIRES (CA)
+// =========================================================
+
+// 🔹 CA Journalier
+export async function getCAJournalier() {
+  return apiFetch("/api/commande/jour", { method: "GET" });
+}
+
+// 🔹 CA Hebdomadaire
+export async function getCAHebdo() {
+  return apiFetch("/api/commande/hebdo", { method: "GET" });
+}
+
+// 🔹 CA Mensuel
+export async function getCAMensuel() {
+  return apiFetch("/api/commande/mensuel", { method: "GET" });
+}
+
+// 🔹 CA Annuel
+export async function getCAAnnuel() {
+  return apiFetch("/api/commande/annuel", { method: "GET" });
+}
+
+// 🔹 Total des impayés
+export async function getCAImpayes() {
+  return apiFetch("/api/commande/impayes", { method: "GET" });
+}

@@ -13,6 +13,11 @@ import {
   getCommandesTotalParJour,
   getCommandesLivreeParJour,
   getCommandesEnCoursParJour,
+  getCAJournalier,
+  getCAHebdo,
+  getCAMensuel,
+  getCAAnnuel,
+  getCAImpayes
 } from "../services/commande.service.ts";
 
 // ✅ Card générique
@@ -143,7 +148,7 @@ const AnnualBarChart = ({ data }: any) => (
   </Card>
 );
 
-// ✅ Dashboard complet avec données réelles et graphiques dynamiques
+// ✅ Dashboard complet avec vraies données backend
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
@@ -151,27 +156,36 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadData() {
       try {
-        // Appels API
-        const total = await getCommandesTotalParJour();
-        const livree = await getCommandesLivreeParJour();
-        const cours = await getCommandesEnCoursParJour();
+        const [
+          total,
+          livree,
+          cours,
+          caJour,
+          caHebdo,
+          caMensuel,
+          caAnnuel,
+          impaye
+        ] = await Promise.all([
+          getCommandesTotalParJour(),
+          getCommandesLivreeParJour(),
+          getCommandesEnCoursParJour(),
+          getCAJournalier(),
+          getCAHebdo(),
+          getCAMensuel(),
+          getCAAnnuel(),
+          getCAImpayes()
+        ]);
 
-        // Calculs simplifiés pour les cartes
-        const today = new Date().toISOString().split("T")[0];
-        const totalJour = total.find((t: any) => t.dateReception === today)?.nbCommandes || 0;
-        const livreeJour = livree.find((t: any) => t.dateReception === today)?.nbCommandes || 0;
-        const coursJour = cours.find((t: any) => t.dateReception === today)?.nbCommandes || 0;
-
-        // Données pour les cartes
+        // Si les CA sont renvoyés sous forme d’objet { montant: 1200 } :
         const cartesData = {
-          totalEnCoursLavage: coursJour,
-          commandesParJour: totalJour,
-          commandesLivreesParJour: livreeJour,
-          totalImpaye: 1000, // exemple
-          caJournalier: 1200,
-          caHebdomadaire: 7000,
-          caMensuel: 30000,
-          caAnnuel: 360000,
+          totalEnCoursLavage: cours.length || 0,
+          commandesParJour: total.length || 0,
+          commandesLivreesParJour: livree.length || 0,
+          totalImpaye: impaye || 0,
+          caJournalier: caJour || 0,
+          caHebdomadaire: caHebdo || 0,
+          caMensuel: caMensuel || 0,
+          caAnnuel: caAnnuel || 0,
         };
 
         setData(cartesData);
@@ -185,29 +199,26 @@ export default function Dashboard() {
     loadData();
   }, []);
 
-  if (loading) {
+  if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
       </div>
     );
-  }
 
-  if (!data) {
+  if (!data)
     return (
       <div className="min-h-screen flex items-center justify-center text-red-600">
         Impossible de charger les données.
       </div>
     );
-  }
 
-  // Construire les données graphiques à partir des cartes
   const monthlySales = [
     { name: "Ce Mois", CA: data.caMensuel, Cout: Math.round(data.caMensuel * 0.3) },
   ];
 
   const periodicTrend = [
-    { name: "Semaine 1", CA: Math.round(data.caHebdomadaire / 7) },
+    { name: "Semaine", CA: data.caHebdomadaire },
     { name: "Aujourd'hui", CA: data.caJournalier },
   ];
 
