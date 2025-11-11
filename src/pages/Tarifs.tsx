@@ -248,12 +248,10 @@ export default function Tarifs() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{tarif.article}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{tarif.service}</td>
                   {/* MODIFICATION : Affichage du prix et ajout de "CFA" */}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold flex items-center gap-1">
-                    {/* DollarSign peut rester comme icône de prix générique, mais vous pouvez le changer si vous avez une icône CFA */}
-                    <DollarSign size={14} className="text-green-600"/>
-                    {/* toFixed(0) si vous utilisez step="1" pour éviter les décimales, sinon toFixed(2) */}
-                    {tarif.prix.toFixed(0)} CFA 
-                  </td>
+<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">
+  {tarif.prix.toFixed(0)} CFA
+</td>
+
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handleEdit(tarif)}

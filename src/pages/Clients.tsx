@@ -162,16 +162,24 @@ export default function Clients() {
           Clients ({filteredClients.length})
         </h1>
         <div className="flex gap-2">
-          <Button onClick={handleExport} className="bg-yellow-500 hover:bg-yellow-600 text-white">
-            <Download className="w-4 h-4 mr-2" />
-            Exporter CSV
-          </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Nouveau Client
-              </Button>
+ <Button
+    onClick={handleExport}
+    className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white shadow-md transition"
+  >
+    <Download className="w-4 h-4" />
+    Exporter CSV
+  </Button>
+
+  {/* Bouton Nouveau Client */}
+  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <DialogTrigger asChild>
+      <Button
+        className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white shadow-md transition"
+      >
+        <Plus className="w-4 h-4" />
+        Nouveau Client
+      </Button>
+
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>

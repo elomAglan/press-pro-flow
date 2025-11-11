@@ -23,10 +23,7 @@ export default function Commandes() {
     async function fetchData() {
       try {
         const data = await getAllCommandes();
-
-        // Tri par ID décroissant
         const sorted = [...data].sort((a, b) => b.id - a.id);
-
         setCommandes(sorted);
       } catch (e) {
         console.error("Erreur chargement commandes:", e);
@@ -35,13 +32,15 @@ export default function Commandes() {
     fetchData();
   }, []);
 
-  // Filtrage local
+  // Filtrage sécurisé
   const filtered = commandes.filter((c) => {
-    const matchSearch =
-      c.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.article && c.article.toLowerCase().includes(searchTerm.toLowerCase()));
+    const clientNom = c.clientNom?.toLowerCase() ?? "";
+    const article = c.article?.toLowerCase() ?? "";
+    const search = searchTerm.toLowerCase();
 
+    const matchSearch = clientNom.includes(search) || article.includes(search);
     const matchDate = !filterDate || c.dateReception === filterDate;
+
     return matchSearch && matchDate;
   });
 
@@ -112,11 +111,11 @@ export default function Commandes() {
                   onClick={() => navigate(`/commandes/${c.id}`)}
                 >
                   <td className="px-4 py-2">{c.id}</td>
-                  <td className="px-4 py-2">{c.clientNom}</td>
-                  <td className="px-4 py-2">{c.service}</td>
-                  <td className="px-4 py-2">{c.qte}</td>
+                  <td className="px-4 py-2">{c.clientNom ?? "-"}</td>
+                  <td className="px-4 py-2">{c.service ?? "-"}</td>
+                  <td className="px-4 py-2">{c.qte ?? 0}</td>
                   <td className="px-4 py-2 text-right">
-                    {Number(c.montantNet).toLocaleString()}
+                    {Number(c.montantNet ?? 0).toLocaleString()}
                   </td>
                   <td className="px-4 py-2">
                     {c.express ? (
@@ -125,9 +124,11 @@ export default function Commandes() {
                       <span className="text-gray-500">Normal</span>
                     )}
                   </td>
-                  <td className="px-4 py-2">{c.dateLivraison}</td>
+                  <td className="px-4 py-2">{c.dateLivraison ?? "-"}</td>
                   <td className="px-4 py-2">
-                    <Badge className="bg-blue-200 text-blue-800">{c.statut}</Badge>
+                    <Badge className="bg-blue-200 text-blue-800">
+                      {c.statut ?? "-"}
+                    </Badge>
                   </td>
                 </tr>
               ))
