@@ -211,9 +211,13 @@ export default function NouvelleCommande() {
         <h1 className="text-2xl font-extrabold flex items-center gap-2">
           <ShoppingCart className="text-blue-600" /> Nouvelle commande
         </h1>
-        <Button className="bg-red-600 hover:bg-red-700">
-          <X size={18} /> Annuler
-        </Button>
+<Button
+  className="bg-red-600 hover:bg-red-700"
+  onClick={() => window.history.back()}
+>
+  <X size={18} /> Annuler
+</Button>
+
       </div>
 
       {/* CLIENT & DATE */}
