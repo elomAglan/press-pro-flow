@@ -63,6 +63,7 @@ export default function NouvelleCommande() {
     dateReception: new Date().toISOString().slice(0, 10),
     type: "standard" as "standard" | "express",
     remise: 0,
+    montantPaye: 0,
   });
 
   const [draft, setDraft] = useState({ type: "", service: "", quantite: 1 });
@@ -137,7 +138,7 @@ export default function NouvelleCommande() {
   const totalNet = Math.max(0, total - cmd.remise);
   const livraison = calcDelivery(cmd.dateReception, cmd.type);
 
-  // ---- Fonction principale d'envoi et ouverture PDF ----
+  // ---- Fonction principale d'envoi ----
   const handleSubmit = async () => {
     if (!cmd.client || articles.length === 0) {
       alert("Veuillez sélectionner un client et ajouter au moins un article.");
@@ -163,9 +164,9 @@ export default function NouvelleCommande() {
         qte: articles.reduce((sum, a) => sum + a.quantite, 0),
         remise: cmd.remise,
         express: cmd.type === "express",
+        montantPaye: cmd.montantPaye,
       };
 
-      // ✅ Appel unique vers /api/commande/pdf
       const token = localStorage.getItem("authToken");
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf`, {
         method: "POST",
@@ -186,12 +187,12 @@ export default function NouvelleCommande() {
       window.open(url, "_blank");
       window.URL.revokeObjectURL(url);
 
-      // 🧹 Réinitialisation
       setCmd({
         client: "",
         dateReception: new Date().toISOString().slice(0, 10),
         type: "standard",
         remise: 0,
+        montantPaye: 0,
       });
       setArticles([]);
     } catch (err: any) {
@@ -322,7 +323,7 @@ export default function NouvelleCommande() {
           ))}
         </div>
 
-        <div className="space-y-2 border-t pt-3">
+        <div className="space-y-3 border-t pt-3">
           <div className="flex justify-between font-semibold text-lg">
             <span>Total :</span>
             <span>{total.toLocaleString()} FCFA</span>
@@ -333,11 +334,24 @@ export default function NouvelleCommande() {
             min={0}
             value={cmd.remise}
             onChange={(e) => setCmd({ ...cmd, remise: +e.target.value })}
+            placeholder="Remise"
           />
 
           <div className="flex justify-between font-bold text-2xl text-blue-600 mt-2">
             <span>Total Net :</span>
             <span>{totalNet.toLocaleString()} FCFA</span>
+          </div>
+
+          {/* 🔹 Champ Montant Payé ajouté ici */}
+          <div className="space-y-1 mt-3">
+            <label className="font-semibold text-sm">Montant payé</label>
+            <Input
+              type="number"
+              min={0}
+              value={cmd.montantPaye}
+              onChange={(e) => setCmd({ ...cmd, montantPaye: +e.target.value })}
+              placeholder="Entrez le montant payé"
+            />
           </div>
         </div>
       </Card>

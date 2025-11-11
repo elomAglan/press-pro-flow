@@ -8,7 +8,6 @@ export async function getAllCommandes() {
 }
 
 
-// 🔹 Créer une commande et télécharger le PDF directement
 // src/services/commande.service.ts
 export async function createCommandeAvecPdf(commandeData: any) {
   const token = localStorage.getItem("authToken");
