@@ -102,3 +102,20 @@ export async function getCAAnnuel() {
 export async function getCAImpayes() {
   return apiFetch("/api/commande/impayes", { method: "GET" });
 }
+
+
+// 🔹 Changer le statut d'une commande (EN_COURS <-> LIVREE)
+export async function changerStatutCommande(id: number, statut: "EN_COURS" | "LIVREE") {
+  const token = localStorage.getItem("authToken");
+
+  return fetch(`${API_BASE_URL}/api/commande/${id}/statut?statut=${statut}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  }).then(res => {
+    if (!res.ok) throw new Error("Erreur lors du changement de statut");
+    return res.json();
+  });
+}

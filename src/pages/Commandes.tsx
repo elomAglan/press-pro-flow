@@ -18,29 +18,28 @@ export default function Commandes() {
 
   const navigate = useNavigate();
 
-  // 🔹 Charger les commandes dès le montage
-useEffect(() => {
-  async function fetchData() {
-    try {
-      const data = await getAllCommandes();
+  // Charger les commandes dès le montage
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const data = await getAllCommandes();
 
-      // ✅ Tri uniquement par ID décroissant
-      const sorted = [...data].sort((a, b) => b.id - a.id);
+        // Tri par ID décroissant
+        const sorted = [...data].sort((a, b) => b.id - a.id);
 
-      setCommandes(sorted);
-    } catch (e) {
-      console.error("Erreur chargement commandes:", e);
+        setCommandes(sorted);
+      } catch (e) {
+        console.error("Erreur chargement commandes:", e);
+      }
     }
-  }
-  fetchData();
-}, []);
+    fetchData();
+  }, []);
 
-
-  // 🔹 Filtrage local
+  // Filtrage local
   const filtered = commandes.filter((c) => {
     const matchSearch =
       c.clientNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.article.toLowerCase().includes(searchTerm.toLowerCase());
+      (c.article && c.article.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchDate = !filterDate || c.dateReception === filterDate;
     return matchSearch && matchDate;
