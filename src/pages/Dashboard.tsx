@@ -178,15 +178,16 @@ export default function Dashboard() {
 
         // Si les CA sont renvoyés sous forme d’objet { montant: 1200 } :
         const cartesData = {
-          totalEnCoursLavage: cours.length || 0,
-          commandesParJour: total.length || 0,
-          commandesLivreesParJour: livree.length || 0,
+          totalEnCoursLavage: cours[0]?.nbCommandes || 0,
+          commandesParJour: total[0]?.nbCommandes || 0,
+          commandesLivreesParJour: livree[0]?.nbCommandes || 0,
           totalImpaye: impaye || 0,
           caJournalier: caJour || 0,
           caHebdomadaire: caHebdo || 0,
           caMensuel: caMensuel || 0,
           caAnnuel: caAnnuel || 0,
         };
+
 
         setData(cartesData);
       } catch (e) {
@@ -238,8 +239,8 @@ export default function Dashboard() {
       {/* Statistiques principales */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard title="En Lavage" value={data.totalEnCoursLavage} icon={Clock} iconColor="text-orange-600" unit="cmd" />
-        <StatCard title="Commandes du Jour" value={data.commandesParJour} icon={ShoppingBag} iconColor="text-blue-600" />
-        <StatCard title="Livrées Aujourd'hui" value={data.commandesLivreesParJour} icon={CheckCircle2} iconColor="text-green-600" />
+        <StatCard title="Commande Total" value={data.commandesParJour} icon={ShoppingBag} iconColor="text-blue-600" />
+        <StatCard title="Commande Livrée" value={data.commandesLivreesParJour} icon={CheckCircle2} iconColor="text-green-600" />
       </div>
 
       {/* Cartes CA */}

@@ -40,12 +40,12 @@ export async function getCommandeById(id: number) {
 }
 
 // 🔹 Mettre à jour une commande
-export async function updateCommande(id: number, commandeData: any) {
-  return apiFetch(`/api/commande/${id}`, {
+export async function updateStatutCommande(id: number, nouveauStatut: string) {
+  return apiFetch(`/api/commande/${id}/statut?statut=${nouveauStatut}`, {
     method: "PUT",
-    body: JSON.stringify(commandeData),
   });
 }
+
 
 // 🔹 Supprimer une commande
 export async function deleteCommande(id: number) {

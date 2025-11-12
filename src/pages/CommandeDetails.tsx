@@ -163,19 +163,19 @@ export default function Commandes() {
   // 🔹 Changer le statut
   const handleChangeStatut = async (id: string, newStatut: "en_cours" | "livre") => {
     try {
-      const updated = await changerStatutCommande(id, newStatut.toUpperCase() as "EN_COURS" | "LIVREE");
+      await changerStatutCommande(id, newStatut.toUpperCase() as "EN_COURS" | "LIVREE");
       setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut: newStatut } : c));
     } catch (error) {
       console.error("Erreur changement de statut :", error);
     }
   };
 
+  // 🔹 Filtrage sécurisé
   const filtered = useMemo(() => {
     return commandes.filter(c => {
-      const matchSearch = c.numero.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = (c.id || "").toLowerCase().includes(searchTerm.toLowerCase());
       const matchStatus = filterStatus === "all" || c.statut === filterStatus;
-      const matchDate =
-        !filterDate || new Date(c.dateCreation).toISOString().split("T")[0] === filterDate;
+      const matchDate = !filterDate || new Date(c.dateCreation).toISOString().split("T")[0] === filterDate;
 
       return matchSearch && matchStatus && matchDate;
     });
@@ -188,7 +188,7 @@ export default function Commandes() {
 
   // 🟦 VUE DETAILS
   if (currentView === "details" && selectedCommandeId) {
-    const commande = commandes.find((c) => c.id === selectedCommandeId);
+    const commande = commandes.find(c => c.id === selectedCommandeId);
     if (!commande) return null;
 
     return <CommandeDetails
@@ -216,11 +216,11 @@ export default function Commandes() {
       <Card className="p-4 grid grid-cols-3 gap-4">
         <div className="relative col-span-2">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input className="pl-10" placeholder="Rechercher..." onChange={(e) => setSearchTerm(e.target.value)} />
+          <Input className="pl-10" placeholder="Rechercher..." onChange={e => setSearchTerm(e.target.value)} />
         </div>
         <div className="relative">
           <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input className="pl-10" type="date" onChange={(e) => setFilterDate(e.target.value)} />
+          <Input className="pl-10" type="date" onChange={e => setFilterDate(e.target.value)} />
         </div>
       </Card>
 
@@ -236,10 +236,9 @@ export default function Commandes() {
               <th className="px-4 py-2 text-right">Actions</th>
             </tr>
           </thead>
-
           <tbody>
             {filtered.length > 0 ? (
-              filtered.map((c) => (
+              filtered.map(c => (
                 <tr key={c.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-2 font-semibold text-blue-600">{c.numero}</td>
                   <td className="px-4 py-2">{getClientName(c.clientId)}</td>
@@ -247,19 +246,22 @@ export default function Commandes() {
                   <td className="px-4 py-2 text-right">{c.total.toLocaleString()} FCFA</td>
                   <td className="px-4 py-2 text-right flex gap-2">
                     <Button
-                      onClick={() => setSelectedCommandeId(c.id) || setCurrentView("details")}
+                      onClick={() => {
+                        setSelectedCommandeId(c.id);
+                        setCurrentView("details");
+                      }}
                       className="bg-gray-200 text-gray-800 hover:bg-gray-300"
                     >
                       Détails
                     </Button>
-                    {c.statut === "en_cours" || c.statut === "livre" ? (
+                    {(c.statut === "en_cours" || c.statut === "livre") && (
                       <Button
                         onClick={() => handleChangeStatut(c.id, c.statut === "en_cours" ? "livre" : "en_cours")}
                         className="bg-yellow-500 text-white hover:bg-yellow-600"
                       >
                         {c.statut === "en_cours" ? "Marquer Livrée" : "Repasser En Cours"}
                       </Button>
-                    ) : null}
+                    )}
                   </td>
                 </tr>
               ))
