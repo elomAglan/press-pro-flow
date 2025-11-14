@@ -109,13 +109,12 @@ export default function Commandes() {
 
           <Badge
             onClick={handleStatutClick}
-            className={`cursor-pointer transition text-lg px-4 py-1 font-semibold hover:scale-105 ${
-              c.statut === "LIVREE"
-                ? "bg-green-100 text-green-700"
-                : c.statut === "EN_COURS"
+            className={`cursor-pointer transition text-lg px-4 py-1 font-semibold hover:scale-105 ${c.statut === "LIVREE"
+              ? "bg-green-100 text-green-700"
+              : c.statut === "EN_COURS"
                 ? "bg-orange-100 text-orange-700"
                 : "bg-gray-100 text-gray-700"
-            }`}
+              }`}
           >
             {c.statut}
           </Badge>
@@ -195,9 +194,8 @@ export default function Commandes() {
                   Montant Payé : {Number(c.montantPaye ?? 0).toLocaleString()} FCFA
                 </p>
                 <p
-                  className={`font-bold ${
-                    isPaid ? "text-green-600" : "text-red-600"
-                  }`}
+                  className={`font-bold ${isPaid ? "text-green-600" : "text-red-600"
+                    }`}
                 >
                   Reste à payer : {resteAPayer.toLocaleString()} FCFA
                 </p>
@@ -217,13 +215,12 @@ export default function Commandes() {
                   <b>Statut de paiement :</b>
                 </p>
                 <Badge
-                  className={`text-base px-3 py-1 ${
-                    c.statutPaiement === "Payé"
-                      ? "bg-green-500 text-white"
-                      : c.statutPaiement === "Partiel"
+                  className={`text-base px-3 py-1 ${c.statutPaiement === "Payé"
+                    ? "bg-green-500 text-white"
+                    : c.statutPaiement === "Partiel"
                       ? "bg-orange-500 text-white"
                       : "bg-red-500 text-white"
-                  }`}
+                    }`}
                 >
                   {c.statutPaiement}
                 </Badge>
@@ -295,7 +292,10 @@ export default function Commandes() {
             {filtered.length > 0 ? (
               filtered.map((c) => (
                 <tr key={c.id} className="border-t hover:bg-gray-50">
-                  <td className="px-4 py-2">{c.id}</td>
+                  <td className="px-4 py-2">
+                    <span className="text-gray-500 font-mono">{`Cmd-${c.id.toString().padStart(4, "0")}`}</span>
+                  </td>
+
                   <td className="px-4 py-2">{c.clientNom}</td>
                   <td className="px-4 py-2">{c.service}</td>
                   <td className="px-4 py-2">{c.qte}</td>

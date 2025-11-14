@@ -154,51 +154,51 @@ export default function Dashboard() {
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [
-          total,
-          livree,
-          cours,
-          caJour,
-          caHebdo,
-          caMensuel,
-          caAnnuel,
-          impaye
-        ] = await Promise.all([
-          getCommandesTotalParJour(),
-          getCommandesLivreeParJour(),
-          getCommandesEnCoursParJour(),
-          getCAJournalier(),
-          getCAHebdo(),
-          getCAMensuel(),
-          getCAAnnuel(),
-          getCAImpayes()
-        ]);
+  async function loadData() {
+    try {
+      const [
+        total,
+        livree,
+        cours,
+        caJour,
+        caHebdo,
+        caMensuel,
+        caAnnuel,
+        impaye
+      ] = await Promise.all([
+        getCommandesTotalParJour(),
+        getCommandesLivreeParJour(),
+        getCommandesEnCoursParJour(),
+        getCAJournalier(),
+        getCAHebdo(),
+        getCAMensuel(),
+        getCAAnnuel(),
+        getCAImpayes()
+      ]);
 
-        // Si les CA sont renvoyés sous forme d’objet { montant: 1200 } :
-        const cartesData = {
-          totalEnCoursLavage: cours[0]?.nbCommandes || 0,
-          commandesParJour: total[0]?.nbCommandes || 0,
-          commandesLivreesParJour: livree[0]?.nbCommandes || 0,
-          totalImpaye: impaye || 0,
-          caJournalier: caJour || 0,
-          caHebdomadaire: caHebdo || 0,
-          caMensuel: caMensuel || 0,
-          caAnnuel: caAnnuel || 0,
-        };
+      // ⚡ Adapter le format : backend renvoie un objet, pas un tableau
+      const cartesData = {
+        totalEnCoursLavage: cours?.nbCommandes || 0,
+        commandesParJour: total?.nbCommandes || 0,
+        commandesLivreesParJour: livree?.nbCommandes || 0,
+        totalImpaye: impaye || 0,
+        caJournalier: caJour || 0,
+        caHebdomadaire: caHebdo || 0,
+        caMensuel: caMensuel || 0,
+        caAnnuel: caAnnuel || 0,
+      };
 
-
-        setData(cartesData);
-      } catch (e) {
-        console.error("Erreur Dashboard", e);
-      } finally {
-        setLoading(false);
-      }
+      setData(cartesData);
+    } catch (e) {
+      console.error("Erreur Dashboard", e);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    loadData();
-  }, []);
+  loadData();
+}, []);
+
 
   if (loading)
     return (
@@ -238,9 +238,9 @@ export default function Dashboard() {
 
       {/* Statistiques principales */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatCard title="En Lavage" value={data.totalEnCoursLavage} icon={Clock} iconColor="text-orange-600" unit="cmd" />
-        <StatCard title="Commande Total" value={data.commandesParJour} icon={ShoppingBag} iconColor="text-blue-600" />
-        <StatCard title="Commande Livrée" value={data.commandesLivreesParJour} icon={CheckCircle2} iconColor="text-green-600" />
+        <StatCard title="En Lavage Aujourd'hui " value={data.totalEnCoursLavage} icon={Clock} iconColor="text-orange-600" unit="cmd" />
+        <StatCard title="Commandes du Jour" value={data.commandesParJour} icon={ShoppingBag} iconColor="text-blue-600" />
+        <StatCard title="Livrées Aujourd'hui" value={data.commandesLivreesParJour} icon={CheckCircle2} iconColor="text-green-600" />
       </div>
 
       {/* Cartes CA */}
