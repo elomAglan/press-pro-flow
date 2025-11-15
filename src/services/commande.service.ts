@@ -37,11 +37,21 @@ export async function getCommandeById(id: number) {
   return apiFetch(`/api/commande/${id}`, { method: "GET" });
 }
 
-// 🔹 Mettre à jour le statut d’une commande
-export async function updateStatutCommande(id: number, nouveauStatut: string) {
-  return apiFetch(`/api/commande/${id}/statut?statut=${nouveauStatut}`, {
+// 🔹 Mettre à jour le statut simple d’une commande
+export async function updateStatutCommande(id: number, nouveauStatut: "EN_COURS" | "LIVREE") {
+  const token = localStorage.getItem("authToken");
+
+  const res = await fetch(`${API_BASE_URL}/api/commande/${id}/statut`, {
     method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ statut: nouveauStatut }),
   });
+
+  if (!res.ok) throw new Error("Erreur lors de la mise à jour du statut");
+  return res.json();
 }
 
 // 🔹 Mettre à jour le statut + montant payé
@@ -51,7 +61,7 @@ export async function updateStatutCommandeAvecMontant(
 ) {
   const token = localStorage.getItem("authToken");
 
-  const res = await fetch(`${API_BASE_URL}/api/commande/${id}/statut`, {
+  const res = await fetch(`${API_BASE_URL}/api/commande/${id}`, { // endpoint principal PUT
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -61,7 +71,6 @@ export async function updateStatutCommandeAvecMontant(
   });
 
   if (!res.ok) throw new Error("Erreur lors de la mise à jour du statut avec montant");
-
   return res.json();
 }
 
@@ -114,18 +123,7 @@ export async function getCAImpayes() {
   return apiFetch("/api/commande/impayes", { method: "GET" });
 }
 
-// 🔹 Changer le statut simple (EN_COURS <-> LIVREE)
+// 🔹 Changer le statut simple (EN_COURS <-> LIVREE) – alternative
 export async function changerStatutCommande(id: number, statut: "EN_COURS" | "LIVREE") {
-  const token = localStorage.getItem("authToken");
-
-  const res = await fetch(`${API_BASE_URL}/api/commande/${id}/statut?statut=${statut}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  if (!res.ok) throw new Error("Erreur lors du changement de statut");
-  return res.json();
+  return updateStatutCommande(id, statut);
 }

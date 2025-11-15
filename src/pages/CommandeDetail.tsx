@@ -5,8 +5,19 @@ import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { getCommandeById, updateStatutCommandeAvecMontant } from "../services/commande.service";
 
 export default function CommandeDetail() {
@@ -48,9 +59,9 @@ export default function CommandeDetail() {
 
   const c = commande;
   const resteAPayer = Number(c.resteAPayer ?? 0);
-
   const montantValide = montantActuel === "" || Number(montantActuel) <= resteAPayer;
 
+  // ✅ Valider paiement + mise à jour du statut
   async function handleValiderPaiement() {
     if (!montantValide) return;
 
@@ -61,12 +72,12 @@ export default function CommandeDetail() {
       };
 
       const updated = await updateStatutCommandeAvecMontant(c.id, payload);
-      setCommande(updated);
+      setCommande(updated); // actualise le front avec le backend
       setShowModal(false);
       setMontantActuel("");
     } catch (e) {
       console.error(e);
-      alert("Erreur lors de la mise à jour.");
+      alert("Erreur lors de la mise à jour du paiement et du statut.");
     }
   }
 
@@ -86,7 +97,7 @@ export default function CommandeDetail() {
           onClick={() => setShowModal(true)}
         >
           <CheckCircle className="h-4 w-4 mr-2" />
-          Mettre à jour le statut
+          Mettre à jour le paiement/statut
         </Button>
       </div>
 
@@ -131,27 +142,6 @@ export default function CommandeDetail() {
             <p className={`font-bold ${resteAPayer === 0 ? "text-green-600" : "text-red-600"}`}>
               Reste à payer : {resteAPayer.toLocaleString()} FCFA
             </p>
-          </div>
-        </Card>
-
-        {/* STATUTS */}
-        <Card className="p-6 shadow-sm border-l-4 border-yellow-500">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Statuts</h2>
-          <div className="space-y-3 text-sm">
-            <p>
-              <b>Statut commande :</b>{" "}
-              <Select value={nouveauStatut} onValueChange={(v) => setNouveauStatut(v as "EN_COURS" | "LIVREE")}>
-  <SelectTrigger className="w-40">
-    <SelectValue placeholder="Sélectionner le statut" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="EN_COURS">EN_COURS</SelectItem>
-    <SelectItem value="LIVREE">LIVREE</SelectItem>
-  </SelectContent>
-</Select>
-
-            </p>
-
             <p>
               <b>Statut paiement :</b>{" "}
               <Badge
@@ -166,38 +156,54 @@ export default function CommandeDetail() {
                 {c.statutPaiement}
               </Badge>
             </p>
-
-            <p><b>Mode :</b> {c.express ? "Express" : "Normal"}</p>
           </div>
         </Card>
       </div>
 
-      {/* MODAL : Paiement avant validation */}
+      {/* MODAL : Paiement et Statut */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg">Confirmer la mise à jour</DialogTitle>
+            <DialogTitle className="text-lg">Confirmer le paiement et le statut</DialogTitle>
           </DialogHeader>
 
-          <p className="text-sm text-gray-600 mt-2">
-            Entrez le montant payé par le client (peut être 0) pour finaliser la commande.
-            Reste à payer : <b>{resteAPayer.toLocaleString()}</b> FCFA
-          </p>
+          <div className="space-y-4 mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Montant payé
+              </label>
+              <Input
+                type="number"
+                placeholder="Montant payé..."
+                value={montantActuel}
+                min={0}
+                max={resteAPayer}
+                onChange={(e) => setMontantActuel(e.target.value)}
+              />
+              {!montantValide && (
+                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                  <AlertCircle size={14} /> Montant invalide (ne peut pas dépasser le reste à payer)
+                </p>
+              )}
+            </div>
 
-          <div className="mt-4">
-            <Input
-              type="number"
-              placeholder="Montant payé..."
-              value={montantActuel}
-              min={0}
-              max={resteAPayer}
-              onChange={(e) => setMontantActuel(e.target.value)}
-            />
-            {!montantValide && (
-              <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                <AlertCircle size={14} /> Montant invalide (ne peut pas dépasser le reste à payer)
-              </p>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Statut commande
+              </label>
+              <Select
+                value={nouveauStatut}
+                onValueChange={(v) => setNouveauStatut(v as "EN_COURS" | "LIVREE")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sélectionner le statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EN_COURS">EN_COURS</SelectItem>
+                  <SelectItem value="LIVREE">LIVREE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-6">
