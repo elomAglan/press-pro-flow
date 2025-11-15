@@ -9,7 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Compte from "./pages/Compte";
 import Clients from "./pages/Clients";
 import Commandes from "./pages/Commandes";
-import CommandeDetail from "./pages/CommandeDetails";
+import CommandeDetail from "./pages/CommandeDetail";
 import NouvelleCommande from "./pages/NouvelleCommande";
 import Paiements from "./pages/Paiements";
 import Parametres from "./pages/Parametres";
@@ -24,10 +24,13 @@ import ChargePage from "./pages/ChargePage";
 const queryClient = new QueryClient();
 
 // Wrapper pour passer onCancel()
-function NouvelleCommandeWrapper() {
+const NouvelleCommandeWrapper = () => {
   const navigate = useNavigate();
   return <NouvelleCommande onCancel={() => navigate("/commandes")} />;
-}
+};
+
+// Helper pour les routes avec Layout
+const withLayout = (Component: React.ReactNode) => <Layout>{Component}</Layout>;
 
 const App: React.FC = () => (
   <QueryClientProvider client={queryClient}>
@@ -43,106 +46,17 @@ const App: React.FC = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* 🧭 APP PROTÉGÉE */}
-          <Route
-            path="/dashboard"
-            element={
-              <Layout>
-                <Dashboard />
-              </Layout>
-            }
-          />
-
-          <Route
-            path="/clients"
-            element={
-              <Layout>
-                <Clients />
-              </Layout>
-            }
-          />
-
-          {/* 🧺 COMMANDES */}
-          <Route
-            path="/commandes"
-            element={
-              <Layout>
-                <Commandes />
-              </Layout>
-            }
-          />
-
-          <Route
-            path="/commandes/nouvelle"
-            element={
-              <Layout>
-                <NouvelleCommandeWrapper />
-              </Layout>
-            }
-          />
-
-          <Route
-            path="/commandes/:id"
-            element={
-              <Layout>
-                <CommandeDetail />
-              </Layout>
-            }
-          />
-
-          <Route
-            path="/charge"
-            element={
-              <Layout>
-                <ChargePage />
-              </Layout>
-            }
-          />
-
-          {/* AUTRES */}
-          <Route
-            path="/paiements"
-            element={
-              <Layout>
-                <Paiements />
-              </Layout>
-            }
-          />
-
-          <Route
-            path="/parametres"
-            element={
-              <Layout>
-                <Parametres />
-              </Layout>
-            }
-          />
-
-          <Route
-            path="/tarifs"
-            element={
-              <Layout>
-                <Tarifs />
-              </Layout>
-            }
-          />
-
-          <Route
-            path="/rapports"
-            element={
-              <Layout>
-                <Rapports />
-              </Layout>
-            }
-          />
-
-          <Route
-            path="/compte"
-            element={
-              <Layout>
-                <Compte />
-              </Layout>
-            }
-          />
+          <Route path="/dashboard" element={withLayout(<Dashboard />)} />
+          <Route path="/clients" element={withLayout(<Clients />)} />
+          <Route path="/commandes" element={withLayout(<Commandes />)} />
+          <Route path="/commandes/nouvelle" element={withLayout(<NouvelleCommandeWrapper />)} />
+          <Route path="/commandes/:id" element={withLayout(<CommandeDetail />)} />
+          <Route path="/charge" element={withLayout(<ChargePage />)} />
+          <Route path="/paiements" element={withLayout(<Paiements />)} />
+          <Route path="/parametres" element={withLayout(<Parametres />)} />
+          <Route path="/tarifs" element={withLayout(<Tarifs />)} />
+          <Route path="/rapports" element={withLayout(<Rapports />)} />
+          <Route path="/compte" element={withLayout(<Compte />)} />
 
           {/* 🚫 NOT FOUND */}
           <Route path="*" element={<NotFound />} />
