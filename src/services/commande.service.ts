@@ -7,12 +7,11 @@ export async function getAllCommandes() {
   return apiFetch("/api/commande", { method: "GET" });
 }
 
-
-// src/services/commande.service.ts
+// 🔹 Créer une commande avec PDF
 export async function createCommandeAvecPdf(commandeData: any) {
   const token = localStorage.getItem("authToken");
 
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf`, {
+  const response = await fetch(`${API_BASE_URL}/api/commande/pdf`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -29,33 +28,49 @@ export async function createCommandeAvecPdf(commandeData: any) {
 
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
-  window.open(url, "_blank"); // ouvre directement dans un nouvel onglet
+  window.open(url, "_blank");
   window.URL.revokeObjectURL(url);
 }
-
 
 // 🔹 Récupérer une commande par ID
 export async function getCommandeById(id: number) {
   return apiFetch(`/api/commande/${id}`, { method: "GET" });
 }
 
-// 🔹 Mettre à jour une commande
+// 🔹 Mettre à jour le statut d’une commande
 export async function updateStatutCommande(id: number, nouveauStatut: string) {
   return apiFetch(`/api/commande/${id}/statut?statut=${nouveauStatut}`, {
     method: "PUT",
   });
 }
 
+// 🔹 Mettre à jour le statut + montant payé
+export async function updateStatutCommandeAvecMontant(
+  id: number,
+  payload: { statut: "EN_COURS" | "LIVREE"; montantActuel: number }
+) {
+  const token = localStorage.getItem("authToken");
+
+  const res = await fetch(`${API_BASE_URL}/api/commande/${id}/statut`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) throw new Error("Erreur lors de la mise à jour du statut avec montant");
+
+  return res.json();
+}
 
 // 🔹 Supprimer une commande
 export async function deleteCommande(id: number) {
   return apiFetch(`/api/commande/${id}`, { method: "DELETE" });
 }
 
-
-
-
-// ==================== 📊 STATISTIQUES ====================
+// ==================== STATISTIQUES ====================
 
 // 🔹 Nombre total de commandes du jour
 export async function getCommandesTotalParJour() {
@@ -72,11 +87,7 @@ export async function getCommandesEnCoursParJour() {
   return apiFetch("/api/commande/cours", { method: "GET" });
 }
 
-
-
-// =========================================================
-// 💰 CHIFFRE D’AFFAIRES (CA)
-// =========================================================
+// ==================== CHIFFRE D’AFFAIRES ====================
 
 // 🔹 CA Journalier
 export async function getCAJournalier() {
@@ -103,19 +114,18 @@ export async function getCAImpayes() {
   return apiFetch("/api/commande/impayes", { method: "GET" });
 }
 
-
-// 🔹 Changer le statut d'une commande (EN_COURS <-> LIVREE)
+// 🔹 Changer le statut simple (EN_COURS <-> LIVREE)
 export async function changerStatutCommande(id: number, statut: "EN_COURS" | "LIVREE") {
   const token = localStorage.getItem("authToken");
 
-  return fetch(`${API_BASE_URL}/api/commande/${id}/statut?statut=${statut}`, {
+  const res = await fetch(`${API_BASE_URL}/api/commande/${id}/statut?statut=${statut}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-  }).then(res => {
-    if (!res.ok) throw new Error("Erreur lors du changement de statut");
-    return res.json();
   });
+
+  if (!res.ok) throw new Error("Erreur lors du changement de statut");
+  return res.json();
 }
