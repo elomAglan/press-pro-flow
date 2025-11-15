@@ -11,11 +11,12 @@ import {
 const ChargeFormModal: React.FC<{
   chargeToEdit: Charge | null;
   onClose: () => void;
-  onSave: (data: Omit<Charge, "id">, id?: number) => void;
+  onSave: (data: { description: string; montant: number }, id?: number) => void;
 }> = ({ chargeToEdit, onClose, onSave }) => {
   const isEditing = Boolean(chargeToEdit);
 
-  const [formData, setFormData] = useState<Omit<Charge, "id">>({
+  // 🚀 Formulaire SANS date (car date générée par le backend)
+  const [formData, setFormData] = useState({
     description: chargeToEdit?.description || "",
     montant: chargeToEdit?.montant || 0,
   });
@@ -95,8 +96,6 @@ export default function ChargePage() {
   const loadCharges = async () => {
     try {
       const data = await getAllCharges();
-
-      // ✅ Toujours un tableau, même si l'API renvoie null
       setCharges(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
@@ -130,12 +129,13 @@ export default function ChargePage() {
     }
   };
 
-  const handleSave = async (data: Omit<Charge, "id">, id?: number) => {
+  // 🚀 Enregistrement sans date (la date vient du backend)
+  const handleSave = async (data: { description: string; montant: number }, id?: number) => {
     try {
       if (id) {
-        await updateCharge(id, data);
+        await updateCharge(id, data); // pas de date envoyée
       } else {
-        await createCharge(data);
+        await createCharge(data); // pas de date envoyée
       }
       await loadCharges();
     } catch (error) {
@@ -165,6 +165,7 @@ export default function ChargePage() {
             <tr>
               <th className="px-6 py-3 text-left">Description</th>
               <th className="px-6 py-3 text-left">Montant (CFA)</th>
+              <th className="px-6 py-3 text-left">Date</th>
               <th className="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -174,9 +175,17 @@ export default function ChargePage() {
               charges.map((charge) => (
                 <tr key={charge.id} className="hover:bg-purple-50">
                   <td className="px-6 py-4">{charge.description}</td>
+
                   <td className="px-6 py-4 font-semibold">
                     {Number(charge.montant).toLocaleString()} CFA
                   </td>
+
+                  <td className="px-6 py-4">
+                    {charge.dateCharge
+                      ? new Date(charge.dateCharge).toLocaleDateString("fr-FR")
+                      : "—"}
+                  </td>
+
                   <td className="px-6 py-4 text-right flex gap-2 justify-end">
                     <button
                       onClick={() => handleEdit(charge)}
@@ -186,7 +195,7 @@ export default function ChargePage() {
                     </button>
 
                     <button
-                      onClick={() => handleDeleteCharge(charge.id)}
+                      onClick={() => handleDeleteCharge(charge.id!)}
                       className="p-2 text-red-600 hover:bg-red-100 rounded"
                     >
                       <Trash2 size={16} />
@@ -196,7 +205,7 @@ export default function ChargePage() {
               ))
             ) : (
               <tr>
-                <td colSpan={3} className="text-center p-6 text-gray-500">
+                <td colSpan={4} className="text-center p-6 text-gray-500">
                   Aucune charge définie
                 </td>
               </tr>
