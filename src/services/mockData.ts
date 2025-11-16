@@ -1,133 +1,132 @@
+// src/services/mockData.ts
+
+// ================= TYPES =================
 export interface Client {
-  id: string;
+  id: number;
   nom: string;
   telephone: string;
-  email: string;
-  adresse: string;
-  createdAt: Date;
 }
 
 export interface Article {
-  id: string;
   type: string;
   service: string;
   quantite: number;
-  prixUnitaire: number;
+  montantNet: number; // Ajout pour calcul du total
 }
 
 export interface Commande {
-  id: string;
+  id: number;
   numero: string;
-  clientId: string;
-  articles: Article[];
-  total: number;
-  statut: "en_attente" | "en_cours" | "pret" | "livre";
-  statutPaiement: "non_paye" | "partiel" | "paye";
+  clientId: number;
+  clientNom: string;
+  dateCreation: string; // ISO
   montantPaye: number;
-  modePaiement?: "especes" | "mobile_money" | "carte";
-  dateCreation: Date;
-  dateLivraison?: Date;
+  total: number;
+  statutPaiement: "non_paye" | "partiel" | "paye";
+  express: boolean;
+  dateLivraison: string;
+  statut: "En cours" | "Livrée" | "Annulée";
+  articles: Article[];
 }
 
-export interface Tarif {
-  id: string;
-  typeArticle: string;
-  service: string;
-  prix: number;
+export interface Charge {
+  id: number;
+  description: string;
+  montant: number;
+  dateCharge: string; // ISO
 }
 
-// Mock Data
+// ================= MOCK CLIENTS =================
 export const mockClients: Client[] = [
-  {
-    id: "1",
-    nom: "Kouassi Jean",
-    telephone: "+225 07 12 34 56 78",
-    email: "kouassi.jean@email.com",
-    adresse: "Cocody, Abidjan",
-    createdAt: new Date("2024-01-15"),
-  },
-  {
-    id: "2",
-    nom: "Traoré Marie",
-    telephone: "+225 05 98 76 54 32",
-    email: "traore.marie@email.com",
-    adresse: "Plateau, Abidjan",
-    createdAt: new Date("2024-02-20"),
-  },
-  {
-    id: "3",
-    nom: "Diallo Ibrahim",
-    telephone: "+225 01 45 67 89 01",
-    email: "diallo.ibrahim@email.com",
-    adresse: "Marcory, Abidjan",
-    createdAt: new Date("2024-03-10"),
-  },
+  { id: 1, nom: "Alice", telephone: "12345678" },
+  { id: 2, nom: "Bob", telephone: "87654321" },
+  { id: 3, nom: "Charlie", telephone: "11223344" },
 ];
 
-export const mockTarifs: Tarif[] = [
-  { id: "1", typeArticle: "Chemise", service: "Nettoyage", prix: 1500 },
-  { id: "2", typeArticle: "Chemise", service: "Repassage", prix: 500 },
-  { id: "3", typeArticle: "Pantalon", service: "Nettoyage", prix: 2000 },
-  { id: "4", typeArticle: "Pantalon", service: "Repassage", prix: 750 },
-  { id: "5", typeArticle: "Robe", service: "Nettoyage", prix: 3000 },
-  { id: "6", typeArticle: "Robe", service: "Repassage", prix: 1000 },
-  { id: "7", typeArticle: "Costume", service: "Nettoyage", prix: 5000 },
-  { id: "8", typeArticle: "Costume", service: "Repassage", prix: 2000 },
-];
-
+// ================= MOCK COMMANDES =================
 export const mockCommandes: Commande[] = [
   {
-    id: "1",
-    numero: "CMD-2024-001",
-    clientId: "1",
-    articles: [
-      { id: "a1", type: "Chemise", service: "Nettoyage", quantite: 3, prixUnitaire: 1500 },
-      { id: "a2", type: "Pantalon", service: "Nettoyage", quantite: 2, prixUnitaire: 2000 },
-    ],
-    total: 8500,
-    statut: "pret",
-    statutPaiement: "paye",
-    montantPaye: 8500,
-    modePaiement: "mobile_money",
-    dateCreation: new Date("2024-10-28"),
-    dateLivraison: new Date("2024-10-30"),
-  },
-  {
-    id: "2",
-    numero: "CMD-2024-002",
-    clientId: "2",
-    articles: [
-      { id: "a3", type: "Robe", service: "Nettoyage", quantite: 2, prixUnitaire: 3000 },
-    ],
-    total: 6000,
-    statut: "en_cours",
-    statutPaiement: "non_paye",
-    montantPaye: 0,
-    dateCreation: new Date("2024-10-29"),
-  },
-  {
-    id: "3",
-    numero: "CMD-2024-003",
-    clientId: "3",
-    articles: [
-      { id: "a4", type: "Costume", service: "Nettoyage", quantite: 1, prixUnitaire: 5000 },
-      { id: "a5", type: "Chemise", service: "Repassage", quantite: 5, prixUnitaire: 500 },
-    ],
-    total: 7500,
-    statut: "en_attente",
+    id: 1,
+    numero: "CMD001",
+    clientId: 1,
+    clientNom: "Alice",
+    dateCreation: "2025-11-12",
+    montantPaye: 20000,
+    total: 50000,
     statutPaiement: "partiel",
-    montantPaye: 3000,
-    modePaiement: "especes",
-    dateCreation: new Date("2024-10-30"),
+    express: false,
+    dateLivraison: "2025-11-14",
+    statut: "En cours",
+    articles: [
+      { type: "Chemise", service: "Repassage", quantite: 3, montantNet: 15000 },
+      { type: "Pantalon", service: "Nettoyage", quantite: 2, montantNet: 35000 },
+    ],
+  },
+  {
+    id: 2,
+    numero: "CMD002",
+    clientId: 2,
+    clientNom: "Bob",
+    dateCreation: "2025-11-13",
+    montantPaye: 50000,
+    total: 50000,
+    statutPaiement: "paye",
+    express: true,
+    dateLivraison: "2025-11-14",
+    statut: "Livrée",
+    articles: [
+      { type: "Robe", service: "Nettoyage", quantite: 1, montantNet: 50000 },
+    ],
+  },
+  {
+    id: 3,
+    numero: "CMD003",
+    clientId: 1,
+    clientNom: "Alice",
+    dateCreation: "2025-11-14",
+    montantPaye: 0,
+    total: 30000,
+    statutPaiement: "non_paye",
+    express: false,
+    dateLivraison: "2025-11-16",
+    statut: "En cours",
+    articles: [
+      { type: "Chemise", service: "Nettoyage", quantite: 2, montantNet: 30000 },
+    ],
   },
 ];
 
-export const getClientById = (id: string): Client | undefined => {
-  return mockClients.find(client => client.id === id);
-};
+// ================= MOCK CHARGES =================
+export const mockCharges: Charge[] = [
+  { id: 1, description: "Loyer pressing", montant: 50000, dateCharge: "2025-11-01" },
+  { id: 2, description: "Électricité", montant: 12000, dateCharge: "2025-11-05" },
+  { id: 3, description: "Produits lessive", montant: 8000, dateCharge: "2025-11-07" },
+  { id: 4, description: "Salaires", montant: 30000, dateCharge: "2025-11-10" },
+  { id: 5, description: "Entretien machines", montant: 7000, dateCharge: "2025-11-12" },
+];
 
-export const generateCommandeNumber = (): string => {
-  const year = new Date().getFullYear();
-  const count = mockCommandes.length + 1;
-  return `CMD-${year}-${String(count).padStart(3, "0")}`;
-};
+// ================= UTILITAIRES =================
+export function getClientById(id: number) {
+  return mockClients.find(c => c.id === id);
+}
+
+// Total des charges (optionnel par date)
+export function getTotalCharges(date?: string) {
+  if (date) {
+    return mockCharges
+      .filter(c => c.dateCharge === date)
+      .reduce((sum, c) => sum + c.montant, 0);
+  }
+  return mockCharges.reduce((sum, c) => sum + c.montant, 0);
+}
+
+// Résultat net (optionnel par date)
+export function getResultatNet(date?: string) {
+  const totalRevenus = date
+    ? mockCommandes
+        .filter(c => c.dateCreation === date)
+        .reduce((sum, c) => sum + c.montantPaye, 0)
+    : mockCommandes.reduce((sum, c) => sum + c.montantPaye, 0);
+  const totalCharges = getTotalCharges(date);
+  return totalRevenus - totalCharges;
+}

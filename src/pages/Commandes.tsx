@@ -2,12 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllCommandes } from "../services/commande.service";
 
-import { Card } from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Badge } from "../components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 import { List, Plus, Search, Calendar, FileText } from "lucide-react";
+
+// JS PDF et AutoTable
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable"; // ✅ Import correct
 
 export default function Commandes() {
   const [commandes, setCommandes] = useState<any[]>([]);
@@ -33,6 +37,48 @@ export default function Commandes() {
     return matchSearch && matchDate;
   });
 
+  const exportPDF = () => {
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text("Commandes Export PDF", 14, 22);
+
+    if (filterDate) {
+      doc.setFontSize(12);
+      doc.text(`Date filtrée : ${filterDate}`, 14, 30);
+    }
+
+    const tableColumn = [
+      "ID",
+      "Client",
+      "Service",
+      "Qté",
+      "Net",
+      "Mode",
+      "Livraison",
+      "Statut",
+    ];
+
+    const tableRows: any[] = filtered.map((c) => [
+      c.id,
+      c.clientNom,
+      c.service,
+      c.qte,
+      Number(c.montantNet).toLocaleString(),
+      c.express ? "Express" : "Normal",
+      c.dateLivraison,
+      c.statut,
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: filterDate ? 35 : 30,
+    });
+
+    doc.save(`commandes_${filterDate || "toutes"}_dates.pdf`);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -40,12 +86,21 @@ export default function Commandes() {
           <List className="text-blue-600" /> Commandes
         </h1>
 
-        <Button
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-          onClick={() => navigate("/commandes/nouvelle")}
-        >
-          <Plus className="h-4 w-4" /> Nouvelle Commande
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+            onClick={exportPDF}
+          >
+            <FileText className="h-4 w-4" /> Exporter PDF
+          </Button>
+
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+            onClick={() => navigate("/commandes/nouvelle")}
+          >
+            <Plus className="h-4 w-4" /> Nouvelle Commande
+          </Button>
+        </div>
       </div>
 
       {/* Filtres */}
@@ -101,11 +156,9 @@ export default function Commandes() {
                   </td>
                   <td className="px-4 py-2">{c.express ? "Express" : "Normal"}</td>
                   <td className="px-4 py-2">{c.dateLivraison}</td>
-
                   <td className="px-4 py-2">
                     <Badge className="bg-blue-200 text-blue-800">{c.statut}</Badge>
                   </td>
-
                   <td className="px-4 py-2 text-center">
                     <Button
                       className="bg-gray-200 hover:bg-gray-300 text-gray-800 p-1"
