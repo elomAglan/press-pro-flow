@@ -37,32 +37,11 @@ export async function getCommandeById(id: number) {
   return apiFetch(`/api/commande/${id}`, { method: "GET" });
 }
 
-// 🔹 Mettre à jour le statut simple d’une commande
-export async function updateStatutCommande(id: number, nouveauStatut: "EN_COURS" | "LIVREE") {
+export async function updateStatutCommandeAvecMontant(id: number, payload: { statut: string; montantActuel: number }) {
   const token = localStorage.getItem("authToken");
 
   const res = await fetch(`${API_BASE_URL}/api/commande/${id}/statut`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ statut: nouveauStatut }),
-  });
-
-  if (!res.ok) throw new Error("Erreur lors de la mise à jour du statut");
-  return res.json();
-}
-
-// 🔹 Mettre à jour le statut + montant payé
-export async function updateStatutCommandeAvecMontant(
-  id: number,
-  payload: { statut: "EN_COURS" | "LIVREE"; montantActuel: number }
-) {
-  const token = localStorage.getItem("authToken");
-
-  const res = await fetch(`${API_BASE_URL}/api/commande/${id}`, { // endpoint principal PUT
-    method: "PUT",
+    method: "POST",  
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -70,9 +49,10 @@ export async function updateStatutCommandeAvecMontant(
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) throw new Error("Erreur lors de la mise à jour du statut avec montant");
+  if (!res.ok) throw new Error("Erreur lors de la mise à jour du statut");
   return res.json();
 }
+
 
 // 🔹 Supprimer une commande
 export async function deleteCommande(id: number) {
@@ -123,7 +103,3 @@ export async function getCAImpayes() {
   return apiFetch("/api/commande/impayes", { method: "GET" });
 }
 
-// 🔹 Changer le statut simple (EN_COURS <-> LIVREE) – alternative
-export async function changerStatutCommande(id: number, statut: "EN_COURS" | "LIVREE") {
-  return updateStatutCommande(id, statut);
-}
