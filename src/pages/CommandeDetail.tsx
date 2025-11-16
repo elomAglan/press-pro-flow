@@ -199,7 +199,6 @@ export default function CommandeDetail() {
                   <SelectValue placeholder="Sélectionner le statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="EN_COURS">EN_COURS</SelectItem>
                   <SelectItem value="LIVREE">LIVREE</SelectItem>
                 </SelectContent>
               </Select>
