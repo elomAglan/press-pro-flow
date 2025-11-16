@@ -5,12 +5,10 @@ import { Button } from "@/components/ui/button";
 import { DollarSign, FileText } from "lucide-react";
 import { mockCommandes, getTotalCharges } from "@/services/mockData";
 
-// JS PDF et AutoTable
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export default function Rapports() {
-  // Données mock
   const commandesFiltrees = mockCommandes;
 
   const totalChiffreAffaire = commandesFiltrees.reduce(
@@ -21,33 +19,33 @@ export default function Rapports() {
   const resultatNet = totalChiffreAffaire - totalCharges;
 
   const generatePDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    doc.setFont("helvetica", "normal"); // police standard
 
     doc.setFontSize(18);
-    doc.text("État Financier", 14, 20);
+    doc.text("État Financier", 40, 40);
 
-    // Date d'exportation
     doc.setFontSize(12);
     doc.text(
       `Date d'exportation : ${new Date().toLocaleDateString("fr-FR")} ${new Date().toLocaleTimeString("fr-FR")}`,
-      14,
-      28
+      40,
+      60
     );
 
-    // 🔹 Corps du tableau avec chiffres formatés en string avant insertion
+    const formatNumber = (num: number) =>
+      num.toLocaleString("fr-FR").replace(/\u202f/g, " "); // espace normal
+
     autoTable(doc, {
-      startY: 35,
-      head: [["Catégorie", "Montant (FCFA)"]] as string[][],
+      startY: 80,
+      head: [["Catégorie", "Montant (FCFA)"]],
       body: [
-        ["Chiffre d'affaires", totalChiffreAffaire.toLocaleString("fr-FR")],
-        ["Total des charges", totalCharges.toLocaleString("fr-FR")],
-        ["Résultat net", resultatNet.toLocaleString("fr-FR")],
+        ["Chiffre d'affaires", formatNumber(totalChiffreAffaire)],
+        ["Total des charges", formatNumber(totalCharges)],
+        ["Résultat net", formatNumber(resultatNet)],
       ],
-      styles: { fontSize: 12, cellPadding: 3 },
+      styles: { font: "helvetica", fontStyle: "normal", fontSize: 12, cellPadding: 6 },
       headStyles: { fillColor: [54, 162, 235], textColor: 255 },
-      columnStyles: {
-        1: { halign: "right" }, // aligner Montant à droite
-      },
+      columnStyles: { 1: { halign: "right" } },
     });
 
     doc.save(`etat_financier_${new Date().toISOString()}.pdf`);
