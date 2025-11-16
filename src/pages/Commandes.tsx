@@ -11,7 +11,7 @@ import { List, Plus, Search, Calendar, FileText } from "lucide-react";
 
 // JS PDF et AutoTable
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable"; // ✅ Import correct
+import autoTable from "jspdf-autotable";
 
 export default function Commandes() {
   const [commandes, setCommandes] = useState<any[]>([]);
@@ -37,6 +37,7 @@ export default function Commandes() {
     return matchSearch && matchDate;
   });
 
+  // 🔥 Export PDF corrigé (montant net correct)
   const exportPDF = () => {
     const doc = new jsPDF();
 
@@ -59,12 +60,12 @@ export default function Commandes() {
       "Statut",
     ];
 
-    const tableRows: any[] = filtered.map((c) => [
+    const tableRows = filtered.map((c) => [
       c.id,
       c.clientNom,
       c.service,
       c.qte,
-      Number(c.montantNet).toLocaleString(),
+      String(Number(c.montantNet)),  // 👍 Fix montant (pas de toLocaleString)
       c.express ? "Express" : "Normal",
       c.dateLivraison,
       c.statut,
@@ -74,6 +75,7 @@ export default function Commandes() {
       head: [tableColumn],
       body: tableRows,
       startY: filterDate ? 35 : 30,
+      styles: { fontSize: 10 },
     });
 
     doc.save(`commandes_${filterDate || "toutes"}_dates.pdf`);
@@ -152,7 +154,7 @@ export default function Commandes() {
                   <td className="px-4 py-2">{c.service}</td>
                   <td className="px-4 py-2">{c.qte}</td>
                   <td className="px-4 py-2 text-right">
-                    {Number(c.montantNet).toLocaleString()}
+                    {Number(c.montantNet).toLocaleString("fr-FR")}
                   </td>
                   <td className="px-4 py-2">{c.express ? "Express" : "Normal"}</td>
                   <td className="px-4 py-2">{c.dateLivraison}</td>
