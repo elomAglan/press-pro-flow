@@ -1,3 +1,5 @@
+// 🔥 AVEC DATE D’EXPORTATION AJOUTÉE
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllCommandes } from "../services/commande.service";
@@ -9,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 
 import { List, Plus, Search, Calendar, FileText } from "lucide-react";
 
-// JS PDF et AutoTable
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -37,16 +38,19 @@ export default function Commandes() {
     return matchSearch && matchDate;
   });
 
-  // 🔥 Export PDF corrigé (montant net correct)
+  // 🔥 Export PDF avec date d'exportation
   const exportPDF = () => {
     const doc = new jsPDF();
 
     doc.setFontSize(18);
-    doc.text("Commandes Export PDF", 14, 22);
+    doc.text("Commandes Export PDF", 14, 20);
+
+    // ➕ Ajout date d’exportation
+    doc.setFontSize(12);
+    doc.text(`Exporté le : ${new Date().toLocaleString()}`, 14, 28);
 
     if (filterDate) {
-      doc.setFontSize(12);
-      doc.text(`Date filtrée : ${filterDate}`, 14, 30);
+      doc.text(`Date filtrée : ${filterDate}`, 14, 36);
     }
 
     const tableColumn = [
@@ -65,7 +69,7 @@ export default function Commandes() {
       c.clientNom,
       c.service,
       c.qte,
-      String(Number(c.montantNet)),  // 👍 Fix montant (pas de toLocaleString)
+      String(Number(c.montantNet)), // montant net corrigé
       c.express ? "Express" : "Normal",
       c.dateLivraison,
       c.statut,
@@ -74,7 +78,7 @@ export default function Commandes() {
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: filterDate ? 35 : 30,
+      startY: filterDate ? 42 : 36, // décalage pour éviter chevauchement
       styles: { fontSize: 10 },
     });
 

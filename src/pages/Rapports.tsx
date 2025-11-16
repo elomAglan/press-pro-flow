@@ -1,27 +1,56 @@
 // src/pages/Rapports.tsx
-import React, { useState } from "react";
+import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DollarSign, Calendar, FileText } from "lucide-react";
+import { DollarSign, FileText } from "lucide-react";
 import { mockCommandes, getTotalCharges } from "@/services/mockData";
 
+// JS PDF et AutoTable
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
 export default function Rapports() {
-  const [filterDate, setFilterDate] = useState("");
+  // Données mock
+  const commandesFiltrees = mockCommandes;
 
-  // Filtrer les commandes par date
-  const commandesFiltrees = filterDate
-    ? mockCommandes.filter(c => c.dateCreation === filterDate)
-    : mockCommandes;
-
-  // Calculs financiers
-  const totalChiffreAffaire = commandesFiltrees.reduce((sum, c) => sum + c.montantPaye, 0);
-  const totalCharges = getTotalCharges(filterDate);
+  const totalChiffreAffaire = commandesFiltrees.reduce(
+    (sum, c) => sum + c.montantPaye,
+    0
+  );
+  const totalCharges = getTotalCharges();
   const resultatNet = totalChiffreAffaire - totalCharges;
 
-  // Simulation téléchargement PDF
-  const handleDownload = () => {
-    alert(`Simulation téléchargement PDF - Date: ${filterDate || "Toutes les dates"}`);
+  const generatePDF = () => {
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text("État Financier", 14, 20);
+
+    // Date d'exportation
+    doc.setFontSize(12);
+    doc.text(
+      `Date d'exportation : ${new Date().toLocaleDateString("fr-FR")} ${new Date().toLocaleTimeString("fr-FR")}`,
+      14,
+      28
+    );
+
+    // 🔹 Corps du tableau avec chiffres formatés en string avant insertion
+    autoTable(doc, {
+      startY: 35,
+      head: [["Catégorie", "Montant (FCFA)"]] as string[][],
+      body: [
+        ["Chiffre d'affaires", totalChiffreAffaire.toLocaleString("fr-FR")],
+        ["Total des charges", totalCharges.toLocaleString("fr-FR")],
+        ["Résultat net", resultatNet.toLocaleString("fr-FR")],
+      ],
+      styles: { fontSize: 12, cellPadding: 3 },
+      headStyles: { fillColor: [54, 162, 235], textColor: 255 },
+      columnStyles: {
+        1: { halign: "right" }, // aligner Montant à droite
+      },
+    });
+
+    doc.save(`etat_financier_${new Date().toISOString()}.pdf`);
   };
 
   return (
@@ -30,43 +59,36 @@ export default function Rapports() {
         <DollarSign className="text-blue-600" /> État Financier
       </h1>
 
-      {/* Filtre par date */}
-      <Card className="p-4 flex items-center gap-4 w-64">
-        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          type="date"
-          value={filterDate}
-          onChange={(e) => setFilterDate(e.target.value)}
-          className="pl-10"
-        />
-      </Card>
-
-      {/* Totaux financiers */}
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="bg-gradient-primary p-6 text-primary-foreground shadow-glow">
+        <Card className="bg-white p-6 shadow-md">
           <p className="text-sm opacity-90">Chiffre d'affaires</p>
-          <p className="text-3xl font-bold">{totalChiffreAffaire.toLocaleString()} FCFA</p>
-          <Button onClick={handleDownload} className="mt-4 flex items-center gap-2 text-sm text-white hover:underline">
-            <FileText className="h-4 w-4" /> Télécharger PDF
-          </Button>
+          <p className="text-3xl font-bold">
+            {totalChiffreAffaire.toLocaleString("fr-FR")} FCFA
+          </p>
         </Card>
 
-        <Card className="bg-gradient-card p-6 shadow-md">
+        <Card className="bg-white p-6 shadow-md">
           <p className="text-sm text-muted-foreground">Total Charges</p>
-          <p className="text-3xl font-bold">{totalCharges.toLocaleString()} FCFA</p>
-          <Button onClick={handleDownload} className="mt-4 flex items-center gap-2 text-sm text-primary hover:underline">
-            <FileText className="h-4 w-4" /> Télécharger PDF
-          </Button>
+          <p className="text-3xl font-bold">
+            {totalCharges.toLocaleString("fr-FR")} FCFA
+          </p>
         </Card>
 
-        <Card className="bg-gradient-card p-6 shadow-md">
+        <Card className="bg-white p-6 shadow-md">
           <p className="text-sm text-muted-foreground">Résultat Net</p>
-          <p className="text-3xl font-bold">{resultatNet.toLocaleString()} FCFA</p>
-          <Button onClick={handleDownload} className="mt-4 flex items-center gap-2 text-sm text-success hover:underline">
-            <FileText className="h-4 w-4" /> Télécharger PDF
-          </Button>
+          <p className="text-3xl font-bold">
+            {resultatNet.toLocaleString("fr-FR")} FCFA
+          </p>
         </Card>
       </div>
+
+      <Button
+        onClick={generatePDF}
+        className="mt-6 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+      >
+        <FileText className="w-4 h-4" />
+        Télécharger l’état financier
+      </Button>
     </div>
   );
 }
