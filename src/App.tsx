@@ -11,7 +11,6 @@ import Clients from "./pages/Clients";
 import Commandes from "./pages/Commandes";
 import CommandeDetail from "./pages/CommandeDetail";
 import NouvelleCommande from "./pages/NouvelleCommande";
-import Paiements from "./pages/Paiements";
 import Parametres from "./pages/Parametres";
 import Rapports from "./pages/Rapports";
 import NotFound from "./pages/NotFound";
@@ -52,7 +51,6 @@ const App: React.FC = () => (
           <Route path="/commandes/nouvelle" element={withLayout(<NouvelleCommandeWrapper />)} />
           <Route path="/commandes/:id" element={withLayout(<CommandeDetail />)} />
           <Route path="/charge" element={withLayout(<ChargePage />)} />
-          <Route path="/paiements" element={withLayout(<Paiements />)} />
           <Route path="/parametres" element={withLayout(<Parametres />)} />
           <Route path="/tarifs" element={withLayout(<Tarifs />)} />
           <Route path="/rapports" element={withLayout(<Rapports />)} />

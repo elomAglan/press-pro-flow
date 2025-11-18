@@ -151,12 +151,13 @@ export default function ChargePage() {
           <CreditCard /> Charges
         </h1>
 
-        <button
-          onClick={handleAdd}
-          className="px-4 py-2 bg-purple-600 text-white rounded flex items-center gap-2"
-        >
-          <Plus /> Ajouter
-        </button>
+<button
+  onClick={handleAdd}
+  className="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2 hover:bg-blue-700 transition"
+>
+  <Plus /> Ajouter
+</button>
+
       </div>
 
       <div className="bg-white border rounded shadow overflow-x-auto">

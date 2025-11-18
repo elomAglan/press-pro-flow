@@ -1,5 +1,3 @@
-// 🔥 AVEC DATE D’EXPORTATION AJOUTÉE
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllCommandes } from "../services/commande.service";
@@ -9,15 +7,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-import { List, Plus, Search, Calendar, FileText } from "lucide-react";
+import { List, Plus, Search, Calendar, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+// --------------------
+// UTILS : Fonction de formatage pour les nombres français pour PDF
+// --------------------
+
+/**
+ * Formate un nombre en utilisant la locale française (fr-FR), sans décimales.
+ * Remplace les espaces par des espaces insécables pour jsPDF.
+ */
+const formatNumberFr = (value: number) => {
+  // Garantit le séparateur de milliers par espace, sans afficher de décimales.
+  // Utilisation de replace(/\s/g, '\u00A0') pour éviter l'éclatement des chiffres dans jsPDF.
+  return value.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\s/g, '\u00A0');
+};
 
 export default function Commandes() {
   const [commandes, setCommandes] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Nombre d’éléments par page
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,27 +52,33 @@ export default function Commandes() {
     return matchSearch && matchDate;
   });
 
-  // 🔥 Export PDF avec date d'exportation
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const displayedCommandes = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Calcul du total par page
+  const totalQte = displayedCommandes.reduce((sum, c) => sum + Number(c.qte), 0);
+  const totalNet = displayedCommandes.reduce((sum, c) => sum + Number(c.montantNet), 0);
+
   const exportPDF = () => {
     const doc = new jsPDF();
 
     doc.setFontSize(18);
     doc.text("Commandes Export PDF", 14, 20);
 
-    // ➕ Ajout date d’exportation
     doc.setFontSize(12);
-    doc.text(`Exporté le : ${new Date().toLocaleString()}`, 14, 28);
-
-    if (filterDate) {
-      doc.text(`Date filtrée : ${filterDate}`, 14, 36);
-    }
+    // 🎯 Correction : Utilisation de toLocaleString avec "fr-FR" pour la date
+    doc.text(`Exporté le : ${new Date().toLocaleString("fr-FR")}`, 14, 28);
+    if (filterDate) doc.text(`Date filtrée : ${filterDate}`, 14, 36);
 
     const tableColumn = [
       "ID",
       "Client",
       "Service",
       "Qté",
-      "Net",
+      "Net (FCFA)",
       "Mode",
       "Livraison",
       "Statut",
@@ -69,7 +89,8 @@ export default function Commandes() {
       c.clientNom,
       c.service,
       c.qte,
-      String(Number(c.montantNet)), // montant net corrigé
+      // 🎯 Correction : Utilisation de formatNumberFr pour les montants dans le tableau
+      formatNumberFr(Number(c.montantNet)),
       c.express ? "Express" : "Normal",
       c.dateLivraison,
       c.statut,
@@ -78,9 +99,14 @@ export default function Commandes() {
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: filterDate ? 42 : 36, // décalage pour éviter chevauchement
+      startY: filterDate ? 42 : 36,
       styles: { fontSize: 10 },
     });
+
+    // Total global en bas du PDF
+    const totalGlobalNet = filtered.reduce((sum, c) => sum + Number(c.montantNet), 0);
+    // 🎯 Correction : Utilisation de formatNumberFr pour le total global
+    doc.text(`Total Net : ${formatNumberFr(totalGlobalNet)} FCFA`, 14, doc.lastAutoTable.finalY + 10);
 
     doc.save(`commandes_${filterDate || "toutes"}_dates.pdf`);
   };
@@ -116,7 +142,10 @@ export default function Commandes() {
           <Input
             placeholder="Rechercher par client ou article..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
             className="pl-10"
           />
         </div>
@@ -126,7 +155,10 @@ export default function Commandes() {
           <Input
             type="date"
             value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
+            onChange={(e) => {
+              setFilterDate(e.target.value);
+              setCurrentPage(1);
+            }}
             className="pl-10"
           />
         </div>
@@ -150,31 +182,45 @@ export default function Commandes() {
           </thead>
 
           <tbody>
-            {filtered.length > 0 ? (
-              filtered.map((c) => (
-                <tr key={c.id} className="border-t hover:bg-gray-50">
-                  <td className="px-4 py-2">{c.id}</td>
-                  <td className="px-4 py-2">{c.clientNom}</td>
-                  <td className="px-4 py-2">{c.service}</td>
-                  <td className="px-4 py-2">{c.qte}</td>
+            {displayedCommandes.length > 0 ? (
+              <>
+                {displayedCommandes.map((c) => (
+                  <tr key={c.id} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-2">{c.id}</td>
+                    <td className="px-4 py-2">{c.clientNom}</td>
+                    <td className="px-4 py-2">{c.service}</td>
+                    <td className="px-4 py-2">{c.qte}</td>
+                    <td className="px-4 py-2 text-right">
+                      {/* Affichage écran standard */}
+                      {Number(c.montantNet).toLocaleString("fr-FR")}
+                    </td>
+                    <td className="px-4 py-2">{c.express ? "Express" : "Normal"}</td>
+                    <td className="px-4 py-2">{c.dateLivraison}</td>
+                    <td className="px-4 py-2">
+                      <Badge className="bg-blue-200 text-blue-800">{c.statut}</Badge>
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <Button
+                        className="bg-gray-200 hover:bg-gray-300 text-gray-800 p-1"
+                        onClick={() => navigate(`/commandes/${c.id}`)}
+                      >
+                        <FileText size={16} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+
+                {/* Ligne total par page */}
+                <tr className="border-t font-bold bg-gray-50">
+                  <td className="px-4 py-2" colSpan={3}>Total cette page</td>
+                  <td className="px-4 py-2">{totalQte}</td>
                   <td className="px-4 py-2 text-right">
-                    {Number(c.montantNet).toLocaleString("fr-FR")}
+                    {/* Affichage écran standard */}
+                    {totalNet.toLocaleString("fr-FR")}
                   </td>
-                  <td className="px-4 py-2">{c.express ? "Express" : "Normal"}</td>
-                  <td className="px-4 py-2">{c.dateLivraison}</td>
-                  <td className="px-4 py-2">
-                    <Badge className="bg-blue-200 text-blue-800">{c.statut}</Badge>
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <Button
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 p-1"
-                      onClick={() => navigate(`/commandes/${c.id}`)}
-                    >
-                      <FileText size={16} />
-                    </Button>
-                  </td>
+                  <td colSpan={4}></td>
                 </tr>
-              ))
+              </>
             ) : (
               <tr>
                 <td colSpan={9} className="py-8 text-center text-gray-500">
@@ -184,6 +230,29 @@ export default function Commandes() {
             )}
           </tbody>
         </table>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-end items-center gap-2 mt-4">
+            <Button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className="p-2"
+            >
+              <ChevronLeft size={16} />
+            </Button>
+            <span>
+              Page {currentPage} / {totalPages}
+            </span>
+            <Button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="p-2"
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );
