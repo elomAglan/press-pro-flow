@@ -4,13 +4,14 @@ import { apiFetch } from "./api";
 export interface Pressing {
   id?: number;
   nom: string;
-  email?: string;       // email de l’admin, optionnel côté frontend
+  email?: string;       // email de l'admin, optionnel côté frontend
   telephone: string;
+  cel?: string;         // Numéro de téléphone secondaire (cellulaire)
   adresse: string;
   logo?: string;        // URL du logo
 }
 
-// Récupérer le pressing de l’utilisateur connecté
+// Récupérer le pressing de l'utilisateur connecté
 export async function getMyPressing(): Promise<Pressing | null> {
   try {
     return await apiFetch("/api/pressing/me", { method: "GET" });
@@ -31,9 +32,9 @@ export async function createPressing(p: Pressing): Promise<Pressing> {
   });
 }
 
-// Mise à jour d’un pressing
+// Mise à jour d'un pressing
 export async function updatePressing(p: Pressing): Promise<Pressing> {
-  if (!p.id) throw new Error("L’ID du pressing est requis pour la mise à jour.");
+  if (!p.id) throw new Error("L'ID du pressing est requis pour la mise à jour.");
   return apiFetch(`/api/pressing/${p.id}`, {
     method: "PUT",
     body: JSON.stringify(p),

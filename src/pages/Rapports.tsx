@@ -37,7 +37,7 @@ export default function Rapports() {
     doc.setFont("helvetica", "normal");
 
     doc.setFontSize(18);
-    doc.text("État Financier", 40, 40);
+    doc.text("État", 40, 40);
 
     doc.setFontSize(12);
     doc.text(
@@ -62,13 +62,13 @@ export default function Rapports() {
       columnStyles: { 1: { halign: "right" } },
     });
 
-    doc.save(`etat_financier_${new Date().toISOString()}.pdf`);
+    doc.save(`etat_${new Date().toISOString()}.pdf`);
   };
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-3xl font-bold flex items-center gap-2">
-        <DollarSign className="text-blue-600" /> État Financier
+        <DollarSign className="text-blue-600" /> État
       </h1>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -99,7 +99,7 @@ export default function Rapports() {
         className="mt-6 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
       >
         <FileText className="w-4 h-4" />
-        Télécharger l’état financier
+        Télécharger l’état
       </Button>
     </div>
   );
