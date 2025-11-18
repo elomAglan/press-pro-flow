@@ -69,7 +69,7 @@ export default function Commandes() {
     doc.text("Commandes Export PDF", 14, 20);
 
     doc.setFontSize(12);
-    // 🎯 Correction : Utilisation de toLocaleString avec "fr-FR" pour la date
+    // Formatage de la date d'export
     doc.text(`Exporté le : ${new Date().toLocaleString("fr-FR")}`, 14, 28);
     if (filterDate) doc.text(`Date filtrée : ${filterDate}`, 14, 36);
 
@@ -89,7 +89,7 @@ export default function Commandes() {
       c.clientNom,
       c.service,
       c.qte,
-      // 🎯 Correction : Utilisation de formatNumberFr pour les montants dans le tableau
+      // Utilisation de formatNumberFr pour les montants dans le tableau (résout le problème d'espacement)
       formatNumberFr(Number(c.montantNet)),
       c.express ? "Express" : "Normal",
       c.dateLivraison,
@@ -105,8 +105,17 @@ export default function Commandes() {
 
     // Total global en bas du PDF
     const totalGlobalNet = filtered.reduce((sum, c) => sum + Number(c.montantNet), 0);
-    // 🎯 Correction : Utilisation de formatNumberFr pour le total global
-    doc.text(`Total Net : ${formatNumberFr(totalGlobalNet)} FCFA`, 14, doc.lastAutoTable.finalY + 10);
+
+    // 🎯 CORRECTION: Utilisation de (doc as any).lastAutoTable?.finalY pour résoudre l'erreur TypeScript
+    // Si lastAutoTable n'existe pas ou est nul, finalY sera undefined, ce qui est géré par la valeur par défaut (par exemple 10)
+    const finalY = (doc as any).lastAutoTable?.finalY || 10;
+
+    // Utilisation de formatNumberFr pour le total global
+    doc.text(
+      `Total Net : ${formatNumberFr(totalGlobalNet)} FCFA`, 
+      14, 
+      finalY + 10 
+    );
 
     doc.save(`commandes_${filterDate || "toutes"}_dates.pdf`);
   };
