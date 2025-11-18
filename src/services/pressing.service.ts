@@ -4,18 +4,26 @@ import { apiFetch } from "./api";
 export interface Pressing {
   id?: number;
   nom: string;
-  email?: string; // email de l’admin, optionnel côté frontend
+  email?: string;       // email de l’admin, optionnel côté frontend
   telephone: string;
   adresse: string;
-  logo?: string; // URL du logo
+  logo?: string;        // URL du logo
 }
 
-// ✅ Récupérer le pressing de l’utilisateur connecté (admin ou simple user)
-export async function getMyPressing(): Promise<Pressing> {
-  return apiFetch("/api/pressing/me", { method: "GET" });
+// Récupérer le pressing de l’utilisateur connecté
+export async function getMyPressing(): Promise<Pressing | null> {
+  try {
+    return await apiFetch("/api/pressing/me", { method: "GET" });
+  } catch (error: any) {
+    if (error.status === 404) {
+      // Aucun pressing trouvé
+      return null;
+    }
+    throw error;
+  }
 }
 
-// ✅ Création d'un pressing (admin uniquement)
+// Création d'un pressing (admin uniquement)
 export async function createPressing(p: Pressing): Promise<Pressing> {
   return apiFetch("/api/pressing/create", {
     method: "POST",
@@ -23,16 +31,11 @@ export async function createPressing(p: Pressing): Promise<Pressing> {
   });
 }
 
-// ✅ Mise à jour d'un pressing existant (admin uniquement)
-export async function updatePressing(id: number, p: Pressing): Promise<Pressing> {
-  return apiFetch(`/api/pressing/update/${id}`, {
+// Mise à jour d’un pressing
+export async function updatePressing(p: Pressing): Promise<Pressing> {
+  if (!p.id) throw new Error("L’ID du pressing est requis pour la mise à jour.");
+  return apiFetch(`/api/pressing/${p.id}`, {
     method: "PUT",
     body: JSON.stringify(p),
   });
-}
-
-
-// ✅ Suppression d'un pressing (admin uniquement)
-export async function deletePressing(id: number): Promise<void> {
-  return apiFetch(`/api/pressing/delete/${id}`, { method: "DELETE" });
 }

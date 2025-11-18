@@ -5,7 +5,7 @@ import {
   getMyPressing,
   createPressing,
   updatePressing,
-  deletePressing,
+  
   Pressing
 } from "../services/pressing.service";
 import { Loader2, Pencil, Plus, Trash2, Mail, Phone, MapPin, Building2, Tag } from "lucide-react";
@@ -64,71 +64,33 @@ export default function Parametres() {
     setIsDialogOpen(true);
   };
 
-  // Soumettre formulaire
-  const handleSubmit = async () => {
-    if (!form.nom || !form.telephone || !form.adresse) {
-      alert("Veuillez remplir tous les champs obligatoires");
-      return;
+const handleSubmit = async () => {
+  setIsLoading(true);
+  try {
+    if (dialogMode === "create") {
+      await createPressing(form);
+    } else if (dialogMode === "edit" && pressing) {
+      await updatePressing({ ...form, id: pressing.id });
     }
+    setIsDialogOpen(false);
+    await loadPressing(); // Recharger le pressing
+  } catch (e: any) {
+    console.error("Erreur lors de l'enregistrement du pressing:", e);
+    setError(e.message || "Erreur lors de l'enregistrement");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-    setIsLoading(true);
-    setError(null);
 
-    try {
-      let saved: Pressing;
-      if (dialogMode === "edit") {
-        if (!pressing?.id) throw new Error("Impossible de modifier : pressing introuvable");
-        saved = await updatePressing(pressing.id, form);
-        setPressing(saved);
-        alert("Pressing modifié avec succès !");
-      } else {
-        saved = await createPressing(form);
-        setPressing(saved);
-        alert("Pressing créé avec succès !");
-      }
-
-      setForm(saved);
-      setIsDialogOpen(false);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Erreur lors de la sauvegarde");
-      alert(`Erreur: ${err.message || "Erreur lors de la sauvegarde"}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Supprimer pressing
-  const handleDelete = async () => {
-    if (!pressing?.id) return;
-    if (!confirm("Supprimer ce pressing ?")) return;
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      await deletePressing(pressing.id);
-      setPressing(null);
-      alert("Pressing supprimé avec succès");
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Erreur lors de la suppression");
-      alert(`Erreur: ${err.message || "Erreur lors de la suppression"}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fonction pour naviguer vers la page Tarifs
   const handleGoToTarifs = () => {
     navigate('/tarifs');
   };
 
   return (
-    // FIX SCROLL: Retrait de la classe min-h-screen
     <div className="p-6 bg-white">
       <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* En-tête avec les boutons d'action groupés */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Paramètres du Pressing</h1>
