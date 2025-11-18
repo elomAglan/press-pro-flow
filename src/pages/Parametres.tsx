@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
-// Import de useNavigate pour la navigation
 import { useNavigate } from "react-router-dom";
 import {
   getMyPressing,
   createPressing,
   updatePressing,
-  
   Pressing
 } from "../services/pressing.service";
-import { Loader2, Pencil, Plus, Trash2, Mail, Phone, MapPin, Building2, Tag } from "lucide-react";
+import { Loader2, Pencil, Plus, Mail, Phone, MapPin, Building2, Tag } from "lucide-react";
 
 export default function Parametres() {
   const [pressing, setPressing] = useState<Pressing | null>(null);
@@ -23,9 +21,15 @@ export default function Parametres() {
     nom: "",
     telephone: "",
     adresse: "",
-    logo: "",
+    // Contient le Base64 SANS préfixe MIME (prêt pour le backend)
+    logo: "", 
     id: undefined,
   });
+
+  // 🎯 NOUVEL ÉTAT POUR L'AFFICHAGE DE L'APERCU
+  // Il contient la chaîne Base64 COMPLETE (AVEC préfixe MIME) ou une URL externe, pour l'affichage.
+  const [previewLogo, setPreviewLogo] = useState<string | null>(null); 
+  // ------------------------------------------
 
   // Charger le pressing lié à l'utilisateur
   const loadPressing = async () => {
@@ -58,37 +62,92 @@ export default function Parametres() {
     setDialogMode(mode);
     if (mode === "edit" && pressing) {
       setForm({ ...pressing });
+      // Si un logo existe déjà, le préparer pour l'aperçu (il est déjà sans préfixe MIME s'il vient du backend)
+      if (pressing.logo) {
+        setPreviewLogo(`data:image/png;base64,${pressing.logo}`); 
+      } else {
+        setPreviewLogo(null);
+      }
     } else {
-      setForm({ nom: "", telephone: "", adresse: "", logo: "" });
+      setForm({ nom: "", telephone: "", adresse: "", logo: "", id: undefined });
+      setPreviewLogo(null);
     }
     setIsDialogOpen(true);
   };
 
-const handleSubmit = async () => {
-  setIsLoading(true);
-  try {
-    if (dialogMode === "create") {
-      await createPressing(form);
-    } else if (dialogMode === "edit" && pressing) {
-      await updatePressing({ ...form, id: pressing.id });
-    }
-    setIsDialogOpen(false);
-    await loadPressing(); // Recharger le pressing
-  } catch (e: any) {
-    console.error("Erreur lors de l'enregistrement du pressing:", e);
-    setError(e.message || "Erreur lors de l'enregistrement");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  // 🎯 NOUVELLE GESTION DU FICHIER (Sépare Base64 pour l'affichage et pour le backend)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
 
+        // Pour l'affichage dans le front (avec préfixe MIME)
+        setPreviewLogo(result);
+
+        // Pour l'envoi au backend : retirer le préfixe MIME
+        const base64ForBackend = result.split(",")[1];
+        setForm(prev => ({ ...prev, logo: base64ForBackend }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  // -------------------------------------------------------------
+
+
+  // 🎯 MISE À JOUR DE handleSubmit
+  const handleSubmit = async () => {
+    if (!form.nom || !form.telephone || !form.adresse) {
+      alert("Veuillez remplir tous les champs obligatoires (Nom, Téléphone, Adresse).");
+      return;
+    }
+
+    setIsLoading(true);
+    
+    // Si l'utilisateur n'a rien mis, fallback sur null
+    const logoToSend = form.logo || null; 
+
+    try {
+      if (dialogMode === "create") {
+        // Envoi du logo nettoyé
+        await createPressing({ ...form, logo: logoToSend }); 
+      } else if (dialogMode === "edit" && pressing) {
+        // Envoi du logo nettoyé
+        await updatePressing({ ...form, logo: logoToSend, id: pressing.id });
+      }
+
+      setIsDialogOpen(false);
+      await loadPressing(); // Recharger le pressing
+    } catch (e: any) {
+      console.error("Erreur lors de l'enregistrement du pressing:", e);
+      setError(e.message || "Erreur lors de l'enregistrement");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleGoToTarifs = () => {
     navigate('/tarifs');
   };
+  
+  // Fonction utilitaire pour obtenir la source du logo pour l'affichage
+  const getLogoSource = (logoBase64: string | undefined | null) => {
+    if (previewLogo) {
+        return previewLogo; // Utiliser la prévisualisation Base64 complète si disponible
+    }
+    if (logoBase64 && logoBase64.startsWith('http')) {
+      return logoBase64; // C'est une URL externe
+    }
+    // Si c'est du Base64 sans préfixe MIME (venant du backend ou form.logo), on l'ajoute pour l'affichage
+    if (logoBase64) {
+        return `data:image/png;base64,${logoBase64}`;
+    }
+    return "/logo-default.png"; // Fallback
+  }
 
   return (
-    <div className="p-6 bg-white">
+    <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto space-y-6">
         
         <div className="flex items-center justify-between">
@@ -98,7 +157,7 @@ const handleSubmit = async () => {
           </div>
 
           <div className="flex gap-2">
-            {/* Bouton Tarifs (visible uniquement si pressing existe) */}
+            {/* Bouton Tarifs */}
             {pressing && (
               <button
                 onClick={handleGoToTarifs}
@@ -109,6 +168,8 @@ const handleSubmit = async () => {
               </button>
             )}
 
+
+            
             {/* Bouton Actualiser */}
             <button
               onClick={loadPressing}
@@ -132,7 +193,7 @@ const handleSubmit = async () => {
           </div>
         </div>
         
-        {/* --- */}
+        {/* --- Affichage --- */}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -143,31 +204,30 @@ const handleSubmit = async () => {
 
         {/* Affichage du pressing configuré */}
         {pressing ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            {/* Rétablissement d'un fond de couleur pour l'en-tête de la carte */}
-            <div className="bg-blue-500 h-24"></div> 
-
-            <div className="p-6 -mt-12">
+          <div 
+            className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden"
+          >
+            <div className="p-6"> 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-lg overflow-hidden">
-                    {pressing.logo ? (
-                      <img src={pressing.logo} className="w-full h-full object-cover" alt={pressing.nom} />
-                    ) : (
-                      <div className="flex items-center justify-center w-full h-full text-2xl font-bold bg-blue-100 text-blue-600">
-                        {pressing.nom.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                  <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-lg overflow-hidden flex-shrink-0">
+                    {/* Utilisation de la fonction getLogoSource pour l'affichage */}
+                    <img 
+                        src={getLogoSource(pressing.logo)} 
+                        className="w-full h-full object-cover" 
+                        alt={pressing.nom} 
+                        onError={(e) => { 
+                            // Fallback sur une image par défaut si l'image Base64/URL ne charge pas
+                            (e.target as HTMLImageElement).src = "/logo-default.png" 
+                        }}
+                    />
                   </div>
 
-                  <div className="mt-8">
+                  <div className="mt-0"> 
                     <h2 className="text-2xl font-bold text-gray-900">{pressing.nom}</h2>
                     {pressing.email && <p className="text-gray-500 text-sm mt-1">{pressing.email}</p>}
                   </div>
                 </div>
-                
-
-
               </div>
 
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -228,16 +288,14 @@ const handleSubmit = async () => {
           )
         )}
         
-        {/* --- */}
+        {/* --- Modal Ajouter / Modifier --- */}
 
-        {/* Modal Ajouter / Modifier */}
         {isDialogOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            {/* NOTE : max-h-[90vh] overflow-y-auto est conservé pour garantir que la modale scroll si le contenu est trop long */}
             <div className="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  {dialogMode === "edit" ? "Modifier le Pressing" : "Créer un Pressing"}
+                  {dialogMode === "edit" ? "Configurer le Pressing" : "Créer un Pressing"}
                 </h2>
                 <p className="text-gray-500 text-sm mt-1">
                   Renseignez les informations de votre établissement
@@ -277,31 +335,50 @@ const handleSubmit = async () => {
                     className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
-
+                
+                {/* 🎯 NOUVEAU BLOC LOGO INTÉGRÉ ICI */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Logo (URL optionnel)</label>
-                  <input
-                    type="url"
-                    placeholder="Ex: https://exemple.com/logo.png"
-                    value={form.logo}
-                    onChange={e => setForm({ ...form, logo: e.target.value })}
-                    className="border border-gray-300 p-3 w-full rounded-lg mb-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {form.logo && (
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Logo (URL ou fichier)</label>
+
+                    {/* URL optionnelle */}
+                    <input
+                        type="url"
+                        placeholder="Ex: https://exemple.com/logo.png"
+                        // Afficher l'URL ou l'image Base64 complète (pour l'affichage)
+                        value={form.logo && !previewLogo ? `data:image/png;base64,${form.logo}` : (previewLogo && !previewLogo.startsWith("data:") ? previewLogo : "")}
+                        onChange={e => {
+                            // Si l'utilisateur tape une URL, on la stocke directement dans form.logo
+                            // et on met à jour previewLogo pour l'affichage immédiat
+                            setForm({ ...form, logo: e.target.value });
+                            setPreviewLogo(e.target.value);
+                        }}
+                        className="border border-gray-300 p-3 w-full rounded-lg mb-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+
+                    {/* Input fichier local */}
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="border border-gray-300 p-2 w-full rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+
+                    {/* Aperçu */}
                     <div className="mt-3">
-                      <img
-                        src={form.logo}
-                        className="h-24 w-24 rounded-lg object-cover border border-gray-200"
-                        alt="Aperçu"
-                      />
+                        <img
+                            src={getLogoSource(form.logo)}
+                            className="h-24 w-24 rounded-lg object-cover border border-gray-200 shadow-md"
+                            alt="Aperçu"
+                            onError={(e) => { (e.target as HTMLImageElement).src = "/logo-default.png" }}
+                        />
                     </div>
-                  )}
                 </div>
+                {/* 🎯 FIN NOUVEAU BLOC LOGO */}
 
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={handleSubmit}
-                    disabled={isLoading}
+                    disabled={isLoading || !form.nom || !form.telephone || !form.adresse}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg flex items-center justify-center gap-2 transition font-medium disabled:opacity-50"
                   >
                     {isLoading && <Loader2 size={18} className="animate-spin" />}
