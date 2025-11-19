@@ -270,7 +270,7 @@ export default function NouvelleCommande({ onCancel }: any) {
 
     {/* Kilo (optionnel) */}
     <div className="space-y-1">
-      <Label>Kilo (optionnel)</Label>
+      <Label>Kilo </Label>
       <Input
         type="number"
         min={0}

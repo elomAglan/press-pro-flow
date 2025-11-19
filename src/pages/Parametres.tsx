@@ -57,11 +57,7 @@ export default function Parametres() {
     setDialogMode(mode);
     if (mode === "edit" && pressing) {
       setForm({ ...pressing });
-      if (pressing.logo) {
-        setPreviewLogo(`data:image/png;base64,${pressing.logo}`); 
-      } else {
-        setPreviewLogo(null);
-      }
+      setPreviewLogo(pressing.logo ? `data:image/png;base64,${pressing.logo}` : null);
     } else {
       setForm({ nom: "", telephone: "", cel: "", adresse: "", logo: "", id: undefined });
       setPreviewLogo(null);
@@ -117,24 +113,19 @@ export default function Parametres() {
   const handleGoToTarifs = () => {
     navigate('/tarifs');
   };
-  
+
   const getLogoSource = (logoBase64: string | undefined | null) => {
-    if (previewLogo) {
-        return previewLogo;
-    }
-    if (logoBase64 && logoBase64.startsWith('http')) {
-      return logoBase64;
-    }
-    if (logoBase64) {
-        return `data:image/png;base64,${logoBase64}`;
-    }
+    if (previewLogo) return previewLogo;
+    if (logoBase64 && logoBase64.startsWith('http')) return logoBase64;
+    if (logoBase64) return `data:image/png;base64,${logoBase64}`;
     return "/logo-default.png";
-  }
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto space-y-6">
         
+        {/* HEADER */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Paramètres du Pressing</h1>
@@ -181,19 +172,18 @@ export default function Parametres() {
           </div>
         )}
 
+        {/* PRESSING INFO */}
         {pressing ? (
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
             <div className="p-6"> 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-lg overflow-hidden flex-shrink-0">
+                  <div className="rounded-full bg-white border-4 border-white shadow-lg overflow-hidden flex-shrink-0 w-24 h-24 flex items-center justify-center">
                     <img 
-                        src={getLogoSource(pressing.logo)} 
-                        className="w-full h-full object-cover" 
-                        alt={pressing.nom} 
-                        onError={(e) => { 
-                            (e.target as HTMLImageElement).src = "/logo-default.png" 
-                        }}
+                      src={getLogoSource(pressing.logo)} 
+                      alt={pressing.nom} 
+                      className="max-h-full max-w-full object-contain" 
+                      onError={(e) => { (e.target as HTMLImageElement).src = "/logo-default.png" }}
                     />
                   </div>
 
@@ -273,6 +263,7 @@ export default function Parametres() {
           )
         )}
 
+        {/* MODAL */}
         {isDialogOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
@@ -286,6 +277,7 @@ export default function Parametres() {
               </div>
 
               <div className="p-6 space-y-5">
+                {/* Formulaire */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nom du pressing *</label>
                   <input
@@ -334,7 +326,6 @@ export default function Parametres() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
-
                   {!previewLogo ? (
                     <input
                       type="file"
@@ -346,7 +337,7 @@ export default function Parametres() {
                     <div className="relative inline-block">
                       <img
                         src={previewLogo}
-                        className="h-24 w-24 rounded-lg object-cover border border-gray-200 shadow-md"
+                        className="h-24 w-24 rounded-lg object-contain border border-gray-200 shadow-md"
                         alt="Aperçu du logo"
                         onError={(e) => { (e.target as HTMLImageElement).src = "/logo-default.png" }}
                       />
