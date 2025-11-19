@@ -25,6 +25,7 @@ type Article = {
   quantite: number;
   prixUnitaire: number;
   parametreId: number; // ✅ Ajout du parametreId
+   kilo?: number | null;
 };
 
 // ---- UI COMPONENTS --------------------------------------------
@@ -78,6 +79,7 @@ export default function NouvelleCommande({ onCancel }: any) {
     dateLivraison: "",
     remise: 0,
     montantPaye: 0,
+    kilo: null,
   });
 
   const [draft, setDraft] = useState({ 
@@ -176,6 +178,7 @@ export default function NouvelleCommande({ onCancel }: any) {
         montantPaye: cmd.montantPaye,
         dateReception: cmd.dateReception,
         dateLivraison: cmd.dateLivraison,
+        kilo: cmd.kilo,
       };
 
       const token = localStorage.getItem("authToken");
@@ -222,43 +225,69 @@ export default function NouvelleCommande({ onCancel }: any) {
         </Button>
       </div>
 
-      {/* CLIENT */}
-      <Card className="space-y-5">
-        <div className="grid md:grid-cols-3 gap-5">
-          <div className="space-y-1">
-            <Label>Client</Label>
-            <Select
-              value={cmd.client}
-              onChange={(v) => setCmd({ ...cmd, client: v })}
-            >
-              <option value="">Sélectionner un client</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.telephone} — {c.nom}
-                </option>
-              ))}
-            </Select>
-          </div>
+     {/* CLIENT */}
+<Card className="space-y-5">
+  <div className="grid md:grid-cols-3 gap-5">
+    {/* Client */}
+    <div className="space-y-1">
+      <Label>Client</Label>
+      <Select
+        value={cmd.client}
+        onChange={(v) => setCmd({ ...cmd, client: v })}
+      >
+        <option value="">Sélectionner un client</option>
+        {clients.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.telephone} — {c.nom}
+          </option>
+        ))}
+      </Select>
+    </div>
 
-          <div className="space-y-1">
-            <Label>Date de réception</Label>
-            <Input
-              type="date"
-              value={cmd.dateReception}
-              onChange={(e) => setCmd({ ...cmd, dateReception: e.target.value })}
-            />
-          </div>
+    {/* Date de réception */}
+    <div className="space-y-1">
+      <Label>Date de réception</Label>
+      <Input
+        type="date"
+        value={cmd.dateReception}
+        onChange={(e) =>
+          setCmd({ ...cmd, dateReception: e.target.value })
+        }
+      />
+    </div>
 
-          <div className="space-y-1">
-            <Label>Date de livraison</Label>
-            <Input
-              type="date"
-              value={cmd.dateLivraison}
-              onChange={(e) => setCmd({ ...cmd, dateLivraison: e.target.value })}
-            />
-          </div>
-        </div>
-      </Card>
+    {/* Date de livraison */}
+    <div className="space-y-1">
+      <Label>Date de livraison</Label>
+      <Input
+        type="date"
+        value={cmd.dateLivraison}
+        onChange={(e) =>
+          setCmd({ ...cmd, dateLivraison: e.target.value })
+        }
+      />
+    </div>
+
+    {/* Kilo (optionnel) */}
+    <div className="space-y-1">
+      <Label>Kilo (optionnel)</Label>
+      <Input
+        type="number"
+        min={0}
+        step={0.1}
+        placeholder="Ex: 1.5"
+        value={cmd.kilo ?? ""}
+        onChange={(e) =>
+          setCmd({
+            ...cmd,
+            kilo: e.target.value ? parseFloat(e.target.value) : null,
+          })
+        }
+      />
+    </div>
+  </div>
+</Card>
+
 
       {/* ARTICLES */}
       <Card className="space-y-4">

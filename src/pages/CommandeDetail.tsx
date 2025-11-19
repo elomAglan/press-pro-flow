@@ -18,7 +18,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getCommandeById, updateStatutCommandeAvecMontant } from "../services/commande.service";
+
+import {
+  getCommandeById,
+  updateStatutCommandeAvecMontant,
+} from "../services/commande.service";
 
 export default function CommandeDetail() {
   const { id } = useParams();
@@ -30,14 +34,16 @@ export default function CommandeDetail() {
   // Modal paiement
   const [showModal, setShowModal] = useState(false);
   const [montantActuel, setMontantActuel] = useState("");
-  const [nouveauStatut, setNouveauStatut] = useState<"EN_COURS" | "LIVREE">("EN_COURS");
+  const [nouveauStatut, setNouveauStatut] =
+    useState<"EN_COURS" | "LIVREE">("EN_COURS");
 
   useEffect(() => {
     async function load() {
       try {
         const data = await getCommandeById(Number(id));
+        console.log("COMMANDE REÇUE :", data); // DEBUG kilo
         setCommande(data);
-        setNouveauStatut(data.statut); // initialiser le select
+        setNouveauStatut(data.statut);
       } finally {
         setLoading(false);
       }
@@ -54,14 +60,19 @@ export default function CommandeDetail() {
   }
 
   if (!commande) {
-    return <div className="p-8 text-center text-red-500">Commande introuvable</div>;
+    return (
+      <div className="p-8 text-center text-red-500">
+        Commande introuvable
+      </div>
+    );
   }
 
   const c = commande;
   const resteAPayer = Number(c.resteAPayer ?? 0);
-  const montantValide = montantActuel === "" || Number(montantActuel) <= resteAPayer;
+  const montantValide =
+    montantActuel === "" || Number(montantActuel) <= resteAPayer;
 
-  // ✅ Valider paiement + mise à jour du statut
+  // Validation du paiement
   async function handleValiderPaiement() {
     if (!montantValide) return;
 
@@ -71,8 +82,11 @@ export default function CommandeDetail() {
         montantActuel: Number(montantActuel || 0),
       };
 
-      const updated = await updateStatutCommandeAvecMontant(c.id, payload);
-      setCommande(updated); // actualise le front avec le backend
+      const updated = await updateStatutCommandeAvecMontant(
+        c.id,
+        payload
+      );
+      setCommande(updated);
       setShowModal(false);
       setMontantActuel("");
     } catch (e) {
@@ -83,6 +97,7 @@ export default function CommandeDetail() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8">
+
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <button
@@ -103,45 +118,96 @@ export default function CommandeDetail() {
 
       {/* TITRE */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Commande #{c.id}</h1>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Commande #{c.id}
+        </h1>
         <p className="text-gray-600 mt-1">
-          Réception : <b>{c.dateReception}</b> — Livraison : <b>{c.dateLivraison}</b>
+          Réception : <b>{c.dateReception}</b> — Livraison :{" "}
+          <b>{c.dateLivraison}</b>
         </p>
       </div>
 
       {/* INFORMATIONS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
         {/* CLIENT */}
         <Card className="p-6 shadow-sm border-l-4 border-blue-600">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Informations Client</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Informations Client
+          </h2>
           <div className="space-y-2 text-sm">
-            <p><b>Nom :</b> {c.clientNom}</p>
-            <p><b>Téléphone :</b> {c.clientTelephone}</p>
+            <p>
+              <b>Nom :</b> {c.clientNom}
+            </p>
+            <p>
+              <b>Téléphone :</b> {c.clientTelephone}
+            </p>
           </div>
         </Card>
 
         {/* ARTICLE */}
         <Card className="p-6 shadow-sm border-l-4 border-green-600">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Article & Service</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Article & Service
+          </h2>
           <div className="space-y-2 text-sm">
-            <p><b>Article :</b> {c.article}</p>
-            <p><b>Service :</b> {c.service}</p>
-            <p><b>Quantité :</b> {c.qte}</p>
-            <p><b>Prix unitaire :</b> {Number(c.prix).toLocaleString()} FCFA</p>
+            <p>
+              <b>Article :</b> {c.article}
+            </p>
+            <p>
+              <b>Service :</b> {c.service}
+            </p>
+            <p>
+              <b>Quantité :</b> {c.qte}
+            </p>
+
+            {/* KILO */}
+            {c.kilo !== null && (
+              <p>
+                <b>Kilo :</b> {c.kilo} kg
+              </p>
+            )}
+
+            <p>
+              <b>Prix unitaire :</b>{" "}
+              {Number(c.prix).toLocaleString()} FCFA
+            </p>
           </div>
         </Card>
 
         {/* MONTANTS */}
         <Card className="p-6 shadow-sm bg-gray-50 border">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Montants</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            Montants
+          </h2>
           <div className="space-y-2 text-sm">
-            <p><b>Montant brut :</b> {Number(c.montantBrut).toLocaleString()} FCFA</p>
-            <p><b>Remise :</b> {Number(c.remise).toLocaleString()} FCFA</p>
-            <p><b>Net :</b> {Number(c.montantNet).toLocaleString()} FCFA</p>
-            <p><b>Payé :</b> {Number(c.montantPaye).toLocaleString()} FCFA</p>
-            <p className={`font-bold ${resteAPayer === 0 ? "text-green-600" : "text-red-600"}`}>
+            <p>
+              <b>Montant brut :</b>{" "}
+              {Number(c.montantBrut).toLocaleString()} FCFA
+            </p>
+            <p>
+              <b>Remise :</b>{" "}
+              {Number(c.remise).toLocaleString()} FCFA
+            </p>
+            <p>
+              <b>Net :</b>{" "}
+              {Number(c.montantNet).toLocaleString()} FCFA
+            </p>
+            <p>
+              <b>Payé :</b>{" "}
+              {Number(c.montantPaye).toLocaleString()} FCFA
+            </p>
+
+            <p
+              className={`font-bold ${
+                resteAPayer === 0
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
               Reste à payer : {resteAPayer.toLocaleString()} FCFA
             </p>
+
             <p>
               <b>Statut paiement :</b>{" "}
               <Badge
@@ -160,14 +226,17 @@ export default function CommandeDetail() {
         </Card>
       </div>
 
-      {/* MODAL : Paiement et Statut */}
+      {/* MODAL */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg">Confirmer le paiement et le statut</DialogTitle>
+            <DialogTitle className="text-lg">
+              Confirmer le paiement et le statut
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 mt-2">
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Montant payé
@@ -193,20 +262,27 @@ export default function CommandeDetail() {
               </label>
               <Select
                 value={nouveauStatut}
-                onValueChange={(v) => setNouveauStatut(v as "EN_COURS" | "LIVREE")}
+                onValueChange={(v) =>
+                  setNouveauStatut(v as "EN_COURS" | "LIVREE")
+                }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner le statut" />
                 </SelectTrigger>
+
                 <SelectContent>
-                  <SelectItem value="LIVREE">LIVREE</SelectItem>
+                  <SelectItem value="EN_COURS">EN COURS</SelectItem>
+                  <SelectItem value="LIVREE">LIVRÉE</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setShowModal(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowModal(false)}
+            >
               Annuler
             </Button>
             <Button

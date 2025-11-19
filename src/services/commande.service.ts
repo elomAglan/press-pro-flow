@@ -4,6 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // 🔹 Lister toutes les commandes
 export async function getAllCommandes() {
+  // 🚨 Note : le champ "kilo" dans les commandes peut être null, c'est juste une info
   return apiFetch("/api/commande", { method: "GET" });
 }
 
@@ -11,13 +12,16 @@ export async function getAllCommandes() {
 export async function createCommandeAvecPdf(commandeData: any) {
   const token = localStorage.getItem("authToken");
 
+  // 🚨 Note : "kilo" peut être null ou un nombre (ex: 1.5)
+  const bodyData = JSON.stringify(commandeData);
+
   const response = await fetch(`${API_BASE_URL}/api/commande/pdf`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(commandeData),
+    body: bodyData,
   });
 
   if (!response.ok) {
@@ -34,14 +38,20 @@ export async function createCommandeAvecPdf(commandeData: any) {
 
 // 🔹 Récupérer une commande par ID
 export async function getCommandeById(id: number) {
+  // 🚨 "kilo" peut être null dans la commande retournée
   return apiFetch(`/api/commande/${id}`, { method: "GET" });
 }
 
-export async function updateStatutCommandeAvecMontant(id: number, payload: { statut: string; montantActuel: number }) {
+// 🔹 Mettre à jour le statut d'une commande avec le montant actuel
+export async function updateStatutCommandeAvecMontant(
+  id: number,
+  payload: { statut: string; montantActuel: number }
+) {
   const token = localStorage.getItem("authToken");
 
+  // 🚨 "kilo" n'est pas modifié ici, mais peut exister dans la commande
   const res = await fetch(`${API_BASE_URL}/api/commande/${id}/statut`, {
-    method: "POST",  
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -53,9 +63,9 @@ export async function updateStatutCommandeAvecMontant(id: number, payload: { sta
   return res.json();
 }
 
-
 // 🔹 Supprimer une commande
 export async function deleteCommande(id: number) {
+  // 🚨 "kilo" peut exister dans la commande supprimée, c'est juste une info
   return apiFetch(`/api/commande/${id}`, { method: "DELETE" });
 }
 
@@ -102,4 +112,3 @@ export async function getCAAnnuel() {
 export async function getCAImpayes() {
   return apiFetch("/api/commande/impayes", { method: "GET" });
 }
-
