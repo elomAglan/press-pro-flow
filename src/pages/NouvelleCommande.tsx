@@ -24,7 +24,7 @@ type Article = {
   service: string;
   quantite: number;
   prixUnitaire: number;
-  priceBasis: "standard" | "express";
+  parametreId: number; // ✅ Ajout du parametreId
 };
 
 // ---- UI COMPONENTS --------------------------------------------
@@ -75,13 +75,17 @@ export default function NouvelleCommande({ onCancel }: any) {
   const [cmd, setCmd] = useState({
     client: "",
     dateReception: new Date().toISOString().slice(0, 10),
-    dateLivraison: "", // <<< AJOUT DU CHAMP MANUEL
-    type: "standard" as "standard" | "express",
+    dateLivraison: "",
     remise: 0,
     montantPaye: 0,
   });
 
-  const [draft, setDraft] = useState({ type: "", service: "", quantite: 1 });
+  const [draft, setDraft] = useState({ 
+    type: "", 
+    service: "", 
+    quantite: 1 
+  });
+  
   const [articles, setArticles] = useState<Article[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [tarifs, setTarifs] = useState<Parametre[]>([]);
@@ -94,29 +98,41 @@ export default function NouvelleCommande({ onCancel }: any) {
       .catch(console.error);
   }, []);
 
+  // ✅ Récupérer uniquement les articles uniques
   const types = useMemo(() => [...new Set(tarifs.map((t) => t.article))], [tarifs]);
-  const services = useMemo(() => [...new Set(tarifs.map((t) => t.service))], [tarifs]);
 
-  const getPrice = (article: string, service: string, mode: "standard" | "express") => {
-    return (
-      tarifs.find(
-        (t) =>
-          t.article === article &&
-          t.service === service &&
-          (mode === "express"
-            ? t.service.toLowerCase().includes("express")
-            : !t.service.toLowerCase().includes("express"))
-      )?.prix ?? 0
+  // ✅ Filtrer les services selon l'article sélectionné
+  const servicesForSelectedType = useMemo(() => {
+    if (!draft.type) return [];
+    return tarifs
+      .filter((t) => t.article === draft.type)
+      .map((t) => ({ id: t.id, service: t.service, prix: t.prix }));
+  }, [draft.type, tarifs]);
+
+  // ✅ Prix du service sélectionné
+  const draftPrice = useMemo(() => {
+    if (!draft.type || !draft.service) return 0;
+    const tarif = tarifs.find(
+      (t) => t.article === draft.type && t.service === draft.service
     );
-  };
+    return tarif?.prix ?? 0;
+  }, [draft, tarifs]);
 
-  const draftPrice = useMemo(
-    () => getPrice(draft.type, draft.service, cmd.type),
-    [draft, cmd.type, tarifs]
-  );
-
+  // ✅ Ajouter un article avec son parametreId
   const addArticle = () => {
-    if (!draft.type || !draft.service) return;
+    if (!draft.type || !draft.service) {
+      alert("Veuillez sélectionner un article et un service.");
+      return;
+    }
+
+    const tarif = tarifs.find(
+      (t) => t.article === draft.type && t.service === draft.service
+    );
+
+    if (!tarif) {
+      alert("Paramètre introuvable pour cet article.");
+      return;
+    }
 
     setArticles((a) => [
       ...a,
@@ -125,23 +141,13 @@ export default function NouvelleCommande({ onCancel }: any) {
         type: draft.type,
         service: draft.service,
         quantite: draft.quantite,
-        prixUnitaire: draftPrice,
-        priceBasis: cmd.type,
+        prixUnitaire: tarif.prix,
+        parametreId: tarif.id, // ✅ Stocker le parametreId
       },
     ]);
 
     setDraft({ type: "", service: "", quantite: 1 });
   };
-
-  useEffect(() => {
-    setArticles((list) =>
-      list.map((a) => ({
-        ...a,
-        prixUnitaire: getPrice(a.type, a.service, cmd.type),
-        priceBasis: cmd.type,
-      }))
-    );
-  }, [cmd.type, tarifs]);
 
   const total = useMemo(
     () => articles.reduce((s, a) => s + a.prixUnitaire * a.quantite, 0),
@@ -159,23 +165,14 @@ export default function NouvelleCommande({ onCancel }: any) {
     try {
       setLoading(true);
 
+      // ✅ Utiliser le premier article pour définir le parametreId
       const firstArticle = articles[0];
-      const tarif = tarifs.find(
-        (t) => t.article === firstArticle.type && t.service === firstArticle.service
-      );
-
-      if (!tarif) {
-        alert("Paramètre introuvable pour cet article.");
-        setLoading(false);
-        return;
-      }
 
       const body = {
         clientId: Number(cmd.client),
-        parametreId: tarif.id,
+        parametreId: firstArticle.parametreId, // ✅ Envoyer le bon parametreId
         qte: articles.reduce((sum, a) => sum + a.quantite, 0),
         remise: cmd.remise,
-        express: cmd.type === "express",
         montantPaye: cmd.montantPaye,
         dateReception: cmd.dateReception,
         dateLivraison: cmd.dateLivraison,
@@ -261,8 +258,6 @@ export default function NouvelleCommande({ onCancel }: any) {
             />
           </div>
         </div>
-
-
       </Card>
 
       {/* ARTICLES */}
@@ -276,7 +271,7 @@ export default function NouvelleCommande({ onCancel }: any) {
             <Label>Article</Label>
             <Select
               value={draft.type}
-              onChange={(v) => setDraft({ ...draft, type: v })}
+              onChange={(v) => setDraft({ ...draft, type: v, service: "" })}
             >
               <option value="">Choisir...</option>
               {types.map((l) => (
@@ -292,11 +287,12 @@ export default function NouvelleCommande({ onCancel }: any) {
             <Select
               value={draft.service}
               onChange={(v) => setDraft({ ...draft, service: v })}
+              disabled={!draft.type}
             >
               <option value="">Choisir...</option>
-              {services.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              {servicesForSelectedType.map((s) => (
+                <option key={s.id} value={s.service}>
+                  {s.service} - {s.prix.toLocaleString()} FCFA
                 </option>
               ))}
             </Select>
@@ -312,77 +308,95 @@ export default function NouvelleCommande({ onCancel }: any) {
             />
           </div>
 
-          <Button className="bg-green-600 hover:bg-green-700 mt-6" onClick={addArticle}>
+          <Button 
+            className="bg-green-600 hover:bg-green-700 mt-6" 
+            onClick={addArticle}
+            disabled={!draft.type || !draft.service}
+          >
             <Plus size={16} /> Ajouter
           </Button>
         </div>
+
+        {draftPrice > 0 && (
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            Prix unitaire : <strong>{draftPrice.toLocaleString()} FCFA</strong>
+          </div>
+        )}
       </Card>
 
       {/* LISTE DES ARTICLES */}
       <Card className="space-y-4">
-        {articles.map((a) => (
-          <div
-            key={a.id}
-            className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border"
-          >
-            <div>
-              <p className="font-semibold">
-                {a.type} — {a.service}
-              </p>
-              <p className="text-sm text-gray-600">
-                {a.quantite} × {a.prixUnitaire.toLocaleString()} FCFA
-              </p>
-            </div>
-
-            <button
-              onClick={() => setArticles((x) => x.filter((i) => i.id !== a.id))}
-              className="text-red-600 hover:text-red-800"
+        {articles.length === 0 ? (
+          <p className="text-gray-500 text-center py-4">
+            Aucun article ajouté pour le moment
+          </p>
+        ) : (
+          articles.map((a) => (
+            <div
+              key={a.id}
+              className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border"
             >
-              <Trash2 size={18} />
-            </button>
-          </div>
-        ))}
+              <div>
+                <p className="font-semibold">
+                  {a.type} — {a.service}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {a.quantite} × {a.prixUnitaire.toLocaleString()} FCFA = {(a.quantite * a.prixUnitaire).toLocaleString()} FCFA
+                </p>
+              </div>
+
+              <button
+                onClick={() => setArticles((x) => x.filter((i) => i.id !== a.id))}
+                className="text-red-600 hover:text-red-800"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          ))
+        )}
 
         {/* TOTALS */}
-        <div className="space-y-3 border-t pt-3">
-          <div className="flex justify-between font-semibold text-lg">
-            <span>Total :</span>
-            <span>{total.toLocaleString()} FCFA</span>
-          </div>
+        {articles.length > 0 && (
+          <div className="space-y-3 border-t pt-3">
+            <div className="flex justify-between font-semibold text-lg">
+              <span>Total :</span>
+              <span>{total.toLocaleString()} FCFA</span>
+            </div>
 
-          <div className="space-y-1">
-            <Label>
-              <div className="flex items-center gap-2">
-                <Percent size={16} /> Remise
-              </div>
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              value={cmd.remise}
-              onChange={(e) => setCmd({ ...cmd, remise: +e.target.value })}
-            />
-          </div>
+            <div className="space-y-1">
+              <Label>
+                <div className="flex items-center gap-2">
+                  <Percent size={16} /> Remise
+                </div>
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                value={cmd.remise}
+                onChange={(e) => setCmd({ ...cmd, remise: +e.target.value })}
+              />
+            </div>
 
-          <div className="flex justify-between font-bold text-2xl text-blue-600 mt-2">
-            <span>Total Net :</span>
-            <span>{totalNet.toLocaleString()} FCFA</span>
-          </div>
+            <div className="flex justify-between font-bold text-2xl text-blue-600 mt-2">
+              <span>Total Net :</span>
+              <span>{totalNet.toLocaleString()} FCFA</span>
+            </div>
 
-          <div className="space-y-1 mt-3">
-            <Label>
-              <div className="flex items-center gap-2">
-                <CreditCard size={16} /> Montant payé
-              </div>
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              value={cmd.montantPaye}
-              onChange={(e) => setCmd({ ...cmd, montantPaye: +e.target.value })}
-            />
+            <div className="space-y-1 mt-3">
+              <Label>
+                <div className="flex items-center gap-2">
+                  <CreditCard size={16} /> Montant payé
+                </div>
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                value={cmd.montantPaye}
+                onChange={(e) => setCmd({ ...cmd, montantPaye: +e.target.value })}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </Card>
 
       {/* SUBMIT BUTTON */}
@@ -391,7 +405,7 @@ export default function NouvelleCommande({ onCancel }: any) {
           loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
         }`}
         onClick={handleSubmit}
-        disabled={loading}
+        disabled={loading || articles.length === 0}
       >
         {loading ? (
           <>
