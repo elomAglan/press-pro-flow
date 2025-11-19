@@ -224,7 +224,7 @@ export default function NouvelleCommande({ onCancel }: any) {
 
       {/* CLIENT */}
       <Card className="space-y-5">
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid md:grid-cols-3 gap-5">
           <div className="space-y-1">
             <Label>Client</Label>
             <Select
