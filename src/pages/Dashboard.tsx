@@ -1,12 +1,28 @@
 import React, { useEffect, useState } from "react";
 import {
-  DollarSign, ShoppingBag, Clock, CheckCircle2, AlertTriangle, Loader2
+  DollarSign,
+  ShoppingBag,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import jsPDF from "jspdf";
 
 import {
-  ResponsiveContainer, BarChart, Bar, PieChart, Pie, LineChart, Line,
-  XAxis, YAxis, Tooltip, Legend, CartesianGrid, Cell
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+  Cell,
 } from "recharts";
 
 import {
@@ -17,25 +33,19 @@ import {
   getCAHebdo,
   getCAMensuel,
   getCAAnnuel,
-  getCAImpayes
+  getCAImpayes,
 } from "../services/commande.service.ts";
 
 // --------------------
-// UTILS : Nouvelle fonction de formatage pour les nombres français
+// UTILS
 // --------------------
-
-/**
- * Formate un nombre en utilisant la locale française (fr-FR), sans décimales.
- */
-const formatNumberFr = (value: number) => {
-  // Garantit le séparateur de milliers par espace, sans afficher de décimales.
-  // Utilise replace(/\s/g, '\u00A0') pour remplacer les espaces par des espaces insécables
-  // afin d'éviter l'éclatement des chiffres dans jsPDF.
-  return value.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\s/g, '\u00A0');
-};
+const formatNumberFr = (value: number) =>
+  value
+    .toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    .replace(/\s/g, "\u00A0");
 
 // --------------------
-// Composants réutilisables
+// Composants UI
 // --------------------
 const Card = ({ children, className = "", title }: any) => (
   <div className={`rounded-xl bg-white dark:bg-gray-800 shadow-lg p-6 ${className}`}>
@@ -55,8 +65,7 @@ const StatCard = ({ title, value, icon: Icon, iconColor, unit }: any) => (
       <Icon className={`w-6 h-6 ${iconColor}`} />
     </div>
     <p className="text-3xl font-extrabold mt-3">
-      {/* Utilisation du formatage FR pour l'affichage écran */}
-      {typeof value === "number" ? value.toLocaleString("fr-FR") : value} 
+      {typeof value === "number" ? value.toLocaleString("fr-FR") : value}
       {unit && <span className="text-lg text-gray-500 ml-1">{unit}</span>}
     </p>
   </Card>
@@ -92,7 +101,7 @@ const CustomTooltip = ({ active, payload, label }: any) =>
   ) : null;
 
 // --------------------
-// Graphiques
+// Graphiques pour Admin
 // --------------------
 const MonthlyBarChart = ({ data }: any) => (
   <Card title="Chiffre d'affaires mensuel">
@@ -185,7 +194,7 @@ export default function Dashboard() {
           caHebdo,
           caMensuel,
           caAnnuel,
-          impaye
+          impaye,
         ] = await Promise.all([
           getCommandesTotalParJour(),
           getCommandesLivreeParJour(),
@@ -194,7 +203,7 @@ export default function Dashboard() {
           getCAHebdo(),
           getCAMensuel(),
           getCAAnnuel(),
-          getCAImpayes()
+          getCAImpayes(),
         ]);
 
         setData({
@@ -231,6 +240,113 @@ export default function Dashboard() {
       </div>
     );
 
+  // -----------------------------
+  // PDF PROFESSIONNEL
+  // -----------------------------
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    let yPos = margin;
+
+    // En-tête
+    doc.setFillColor(31, 41, 55); // Couleur sombre
+    doc.rect(0, 0, pageWidth, 25, "F");
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont("courier", "bold");
+    doc.text("TABLEAU DE BORD", pageWidth / 2, 12, { align: "center" });
+    
+    doc.setFontSize(10);
+    doc.setFont("courier", "normal");
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("fr-FR");
+    const timeStr = now.toLocaleTimeString("fr-FR");
+    doc.text(`Genere le ${dateStr} a ${timeStr}`, 
+      pageWidth / 2, 20, { align: "center" });
+
+    yPos = 35;
+
+    // Fonction pour ajouter une section
+    const addSection = (title: string) => {
+      if (yPos > pageHeight - 40) {
+        doc.addPage();
+        yPos = margin;
+      }
+      
+      doc.setTextColor(31, 41, 55);
+      doc.setFontSize(13);
+      doc.setFont("courier", "bold");
+      doc.text(title, margin, yPos);
+      
+      doc.setDrawColor(79, 70, 229);
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPos + 2, pageWidth - margin, yPos + 2);
+      
+      yPos += 10;
+    };
+
+    // Fonction pour ajouter une ligne
+    const addLine = (label: string, value: string, color: number[] = [50, 50, 50]) => {
+      if (yPos > pageHeight - 15) {
+        doc.addPage();
+        yPos = margin;
+      }
+      
+      doc.setTextColor(color[0], color[1], color[2]);
+      doc.setFontSize(11);
+      doc.setFont("courier", "normal");
+      doc.text(label, margin + 5, yPos);
+      
+      doc.setFont("courier", "bold");
+      doc.text(value, pageWidth - margin - 10, yPos, { align: "right" });
+      
+      yPos += 8;
+    };
+
+    // Section Commandes
+    addSection("COMMANDES");
+    addLine("En lavage aujourd'hui", `${data.totalEnCoursLavage} commandes`, [241, 89, 35]);
+    addLine("Commandes du jour", `${data.commandesParJour} commandes`, [37, 99, 235]);
+    addLine("Livrees aujourd'hui", `${data.commandesLivreesParJour} commandes`, [34, 197, 94]);
+
+    yPos += 3;
+
+    // Section Chiffre d'affaires
+    addSection("CHIFFRE D'AFFAIRES");
+    addLine("CA Journalier", `${formatNumberFr(data.caJournalier)} FCFA`, [34, 197, 94]);
+    addLine("CA Hebdomadaire", `${formatNumberFr(data.caHebdomadaire)} FCFA`, [34, 197, 94]);
+    addLine("CA Mensuel", `${formatNumberFr(data.caMensuel)} FCFA`, [34, 197, 94]);
+    if (isAdmin) {
+      addLine("CA Annuel", `${formatNumberFr(data.caAnnuel)} FCFA`, [37, 99, 235]);
+    }
+
+    yPos += 3;
+
+    // Section Impayés
+    addSection("IMPAYES");
+    doc.setTextColor(220, 38, 38);
+    doc.setFontSize(12);
+    doc.setFont("courier", "bold");
+    doc.text(`Total Impaye: ${formatNumberFr(data.totalImpaye)} FCFA`, margin + 5, yPos);
+    doc.setDrawColor(220, 38, 38);
+    doc.setLineWidth(1);
+    doc.rect(margin, yPos - 4, pageWidth - 2 * margin, 8, "S");
+
+    yPos += 15;
+
+    // Pied de page
+    doc.setTextColor(150, 150, 150);
+    doc.setFontSize(8);
+    doc.setFont("courier", "normal");
+    doc.text("Confidentiel - Reserve au personnel autorise", pageWidth / 2, pageHeight - 5, { align: "center" });
+
+    doc.save("Tableau-de-bord.pdf");
+  };
+
+  // Données graphiques admin
   const monthlySales = [{ name: "Mois", CA: data.caMensuel, Cout: Math.round(data.caMensuel * 0.3) }];
   const periodicTrend = [{ name: "Semaine", CA: data.caHebdomadaire }, { name: "Aujourd'hui", CA: data.caJournalier }];
   const clientSegmentation = [
@@ -239,119 +355,76 @@ export default function Dashboard() {
   ];
   const annualPerformance = [{ year: new Date().getFullYear(), CA: data.caAnnuel, Target: Math.round(data.caAnnuel * 1.1) }];
 
-  // ✅ Télécharger PDF avec encodage correct
-  const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    
-    // En-tête
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text("TABLEAU DE BORD", 105, 20, { align: "center" });
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    const dateStr = new Date().toLocaleDateString("fr-FR", { 
-      day: "2-digit", 
-      month: "long", 
-      year: "numeric" 
-    });
-    doc.text("Date: " + dateStr, 105, 28, { align: "center" });
-    
-    // Ligne de séparation
-    doc.setLineWidth(0.5);
-    doc.line(20, 32, 190, 32);
-    
-    let yPos = 45;
-    
-    // Section Commandes
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("COMMANDES", 20, yPos);
-    yPos += 8;
-    
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text("En Lavage Aujourd'hui : " + data.totalEnCoursLavage + " commandes", 25, yPos);
-    yPos += 7;
-    doc.text("Commandes du Jour : " + data.commandesParJour + " commandes", 25, yPos);
-    yPos += 7;
-    doc.text("Livrées Aujourd'hui : " + data.commandesLivreesParJour + " commandes", 25, yPos);
-    yPos += 12;
-
-    // Section Chiffre d'Affaires
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("CHIFFRE D'AFFAIRES", 20, yPos);
-    yPos += 8;
-    
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    
-    // CORRECTION APPLIQUÉE ICI : Utilisation de formatNumberFr pour la compacticité
-    doc.text("CA Journalier : " + formatNumberFr(data.caJournalier) + " FCFA", 25, yPos);
-    yPos += 7;
-    doc.text("CA Hebdomadaire : " + formatNumberFr(data.caHebdomadaire) + " FCFA", 25, yPos);
-    yPos += 7;
-    doc.text("CA Mensuel : " + formatNumberFr(data.caMensuel) + " FCFA", 25, yPos);
-    yPos += 7;
-    doc.text("CA Annuel : " + formatNumberFr(data.caAnnuel) + " FCFA", 25, yPos);
-    yPos += 12;
-
-    // Section Impayés (si admin)
-    if (isAdmin) {
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(220, 38, 38); // Rouge
-      doc.text("IMPAYÉS", 20, yPos);
-      yPos += 8;
-      
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      
-      // CORRECTION APPLIQUÉE ICI : Utilisation de formatNumberFr pour la compacticité
-      doc.text("Total Impayé : " + formatNumberFr(data.totalImpaye) + " FCFA", 25, yPos);
-      doc.setTextColor(0, 0, 0); // Retour au noir
-    }
-
-    // Pied de page
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "italic");
-    doc.text("Document généré automatiquement", 105, 280, { align: "center" });
-
-    // Télécharger
-    const filename = "Dashboard_" + new Date().toISOString().slice(0, 10) + ".pdf";
-    doc.save(filename);
-  };
-
   return (
     <div className="p-6 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-4xl font-bold mb-4">Tableau de Bord</h1>
-        <button
-          onClick={handleDownloadPDF}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          Télécharger PDF
-        </button>
+        {isAdmin && (
+          <button
+            onClick={handleDownloadPDF}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Télécharger PDF
+          </button>
+        )}
       </div>
 
-      {/* Statistiques principales */}
+      {/* Commandes */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatCard title="En Lavage Aujourd'hui" value={data.totalEnCoursLavage} icon={Clock} iconColor="text-orange-600" unit="cmd" />
-        <StatCard title="Commandes du Jour" value={data.commandesParJour} icon={ShoppingBag} iconColor="text-blue-600" />
-        <StatCard title="Livrées Aujourd'hui" value={data.commandesLivreesParJour} icon={CheckCircle2} iconColor="text-green-600" />
+        <StatCard
+          title="En Lavage Aujourd'hui"
+          value={data.totalEnCoursLavage}
+          icon={Clock}
+          iconColor="text-orange-600"
+          unit="cmd"
+        />
+        <StatCard
+          title="Commandes du Jour"
+          value={data.commandesParJour}
+          icon={ShoppingBag}
+          iconColor="text-blue-600"
+        />
+        <StatCard
+          title="Livrées Aujourd'hui"
+          value={data.commandesLivreesParJour}
+          icon={CheckCircle2}
+          iconColor="text-green-600"
+        />
       </div>
 
-      {/* CA visible par Admin et Comptoir */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatCard title="CA Journalier" value={data.caJournalier} icon={DollarSign} iconColor="text-green-600" unit="FCFA" />
-        <StatCard title="CA Hebdomadaire" value={data.caHebdomadaire} icon={DollarSign} iconColor="text-green-500" unit="FCFA" />
-        <StatCard title="CA Mensuel" value={data.caMensuel} icon={DollarSign} iconColor="text-green-700" unit="FCFA" />
+      {/* CA Journalier et Hebdomadaire pour tous */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+        <StatCard
+          title="CA Journalier"
+          value={data.caJournalier}
+          icon={DollarSign}
+          iconColor="text-green-600"
+          unit="FCFA"
+        />
+        <StatCard
+          title="CA Hebdomadaire"
+          value={data.caHebdomadaire}
+          icon={DollarSign}
+          iconColor="text-green-500"
+          unit="FCFA"
+        />
+        {isAdmin && (
+          <StatCard
+            title="CA Mensuel"
+            value={data.caMensuel}
+            icon={DollarSign}
+            iconColor="text-green-700"
+            unit="FCFA"
+          />
+        )}
       </div>
 
+      {/* Impayés après les cartes */}
+      <TotalImpayeCard value={data.totalImpaye} />
+
+      {/* Graphiques visibles uniquement pour ADMIN */}
       {isAdmin && (
         <>
-          <TotalImpayeCard value={data.totalImpaye} />
           <div className="grid lg:grid-cols-2 gap-6">
             <MonthlyBarChart data={monthlySales} />
             <ClientPieChart data={clientSegmentation} />

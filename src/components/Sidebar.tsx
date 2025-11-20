@@ -31,6 +31,9 @@ export function Sidebar({
   const [pressingName, setPressingName] = useState<string>("");
   const navigate = useNavigate();
 
+  const role = localStorage.getItem("role") || "COMPTOIR";
+  const isAdmin = role === "ADMIN" || role === "ADMINISTRATEUR";
+
   // Logo par défaut (icône Shirt)
   const DefaultLogo = () => <Shirt className="text-white h-6 w-6" />;
 
@@ -58,13 +61,16 @@ export function Sidebar({
     else document.documentElement.classList.remove("dark");
   }, [darkMode]);
 
+  // -----------------------------
+  // Navigation filtrée par rôle
+  // -----------------------------
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Clients", href: "/clients", icon: Users },
     { name: "Commandes", href: "/commandes", icon: ShoppingBag },
     { name: "Pressing", href: "/parametres", icon: Shirt },
     { name: "Charge", href: "/charge", icon: Archive },
-    { name: "Rapport", href: "/rapports", icon: FileText },
+    ...(isAdmin ? [{ name: "Rapport", href: "/rapports", icon: FileText }] : []),
   ];
 
   const handleLogout = () => {
