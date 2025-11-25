@@ -61,32 +61,34 @@ export default function CommandeDetail() {
   const montantValide = montantActuel === "" || Number(montantActuel) <= resteAPayer;
 
   // ================= PAIEMENT & STATUT =================
-  async function handleValiderPaiement() {
-    if (!commande || !montantValide) return;
+async function handleValiderPaiement() {
+  if (!commande || !montantValide) return;
 
-    try {
-      const payload = {
-        statut: nouveauStatut,
-        montantActuel: Number(montantActuel || 0),
-      };
+  try {
+    const payload = {
+      montantActuel: Number(montantActuel || 0),
+      // le statut sera forcé à LIVREE côté backend
+    };
 
-      // 1️⃣ Mettre à jour le statut/paiement
-      const updatedCommande = await updateStatutCommandeAvecMontant(commande.id, payload);
+    // 1️⃣ Mettre à jour le statut/paiement et générer le PDF
+    await updateStatutCommandeAvecMontant(commande.id, payload);
 
-      setCommande(updatedCommande);
+    // 2️⃣ Recharger la commande pour mettre à jour l'affichage
+    const data = await getCommandeById(commande.id);
+    setCommande(data);
 
-      if (updatedCommande.clientId) {
-        const updatedClient = await getClientById(updatedCommande.clientId);
-        setClient(updatedClient);
-      }
-
-      setMontantActuel("");
-      setShowModal(false);
-    } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la mise à jour du paiement/statut");
+    if (data.clientId) {
+      const updatedClient = await getClientById(data.clientId);
+      setClient(updatedClient);
     }
+
+    setMontantActuel("");
+    setShowModal(false);
+  } catch (err) {
+    console.error(err);
+    alert("Erreur lors de la mise à jour du paiement/statut");
   }
+}
 
   // ================= PDF =================
   async function handleDownloadPdf() {
