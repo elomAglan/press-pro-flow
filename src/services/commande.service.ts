@@ -117,10 +117,10 @@ export async function getCommandePdf(id: number) {
   return res.blob();
 }
 
-// ========================= UPDATE STATUT & PAIEMENT =========================
+// ========================= UPDATE STATUT =========================
 export async function updateStatutCommandeAvecMontant(
   id: number,
-  payload: { statut: string; montantActuel: number }
+  payload: { montantActuel: number } // le statut sera forcé côté backend à LIVREE
 ) {
   const token = localStorage.getItem("authToken");
 
@@ -135,9 +135,19 @@ export async function updateStatutCommandeAvecMontant(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Erreur mise à jour statut : ${text || res.statusText}`);
+    throw new Error(`Erreur serveur: ${text || res.statusText}`);
   }
-  return res.json();
+
+  // Lire la réponse comme PDF
+  const pdfBlob = await res.blob();
+
+  // Créer un URL et l’ouvrir dans un nouvel onglet
+  const url = window.URL.createObjectURL(pdfBlob);
+  window.open(url, "_blank"); // ouvre directement le PDF
+  // Optionnel : libérer l'URL après un petit délai
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+
+  return true; // pour indiquer que tout s'est bien passé
 }
 
 // ========================= DELETE =========================
