@@ -24,14 +24,16 @@ import {
   updateStatutCommandeAvecMontant,
 } from "../services/commande.service";
 
+import { getClientById } from "../services/client.service";
+
 export default function CommandeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [commande, setCommande] = useState<any | null>(null);
+  const [client, setClient] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Modal paiement
   const [showModal, setShowModal] = useState(false);
   const [montantActuel, setMontantActuel] = useState("");
   const [nouveauStatut, setNouveauStatut] =
@@ -41,9 +43,13 @@ export default function CommandeDetail() {
     async function load() {
       try {
         const data = await getCommandeById(Number(id));
-        console.log("COMMANDE REÇUE :", data); // DEBUG kilo
         setCommande(data);
         setNouveauStatut(data.statut);
+
+        if (data.clientId) {
+          const clientData = await getClientById(data.clientId);
+          setClient(clientData);
+        }
       } finally {
         setLoading(false);
       }
@@ -53,26 +59,25 @@ export default function CommandeDetail() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-[60vh]">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+      <div className="flex justify-center items-center h-[60vh] dark:bg-gray-900">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     );
   }
 
   if (!commande) {
     return (
-      <div className="p-8 text-center text-red-500">
+      <div className="p-8 text-center text-red-500 dark:text-red-400 dark:bg-gray-900">
         Commande introuvable
       </div>
     );
   }
 
   const c = commande;
-  const resteAPayer = Number(c.resteAPayer ?? 0);
+  const resteAPayer = Number(c.montantNetTotal ?? 0) - Number(c.montantPaye ?? 0);
   const montantValide =
     montantActuel === "" || Number(montantActuel) <= resteAPayer;
 
-  // Validation du paiement
   async function handleValiderPaiement() {
     if (!montantValide) return;
 
@@ -82,11 +87,17 @@ export default function CommandeDetail() {
         montantActuel: Number(montantActuel || 0),
       };
 
-      const updated = await updateStatutCommandeAvecMontant(
-        c.id,
-        payload
-      );
-      setCommande(updated);
+      await updateStatutCommandeAvecMontant(c.id, payload);
+
+      // Recharger la commande et le client
+      const updatedCommande = await getCommandeById(c.id);
+      setCommande(updatedCommande);
+
+      if (updatedCommande.clientId) {
+        const updatedClient = await getClientById(updatedCommande.clientId);
+        setClient(updatedClient);
+      }
+
       setShowModal(false);
       setMontantActuel("");
     } catch (e) {
@@ -96,19 +107,19 @@ export default function CommandeDetail() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
+    <div className="p-8 max-w-4xl mx-auto space-y-8 dark:bg-gray-900 dark:text-gray-100">
 
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <button
           onClick={() => navigate("/commandes")}
-          className="flex items-center gap-2 text-blue-700 hover:underline"
+          className="flex items-center gap-2 text-blue-700 hover:underline dark:text-blue-400"
         >
           <ArrowLeft size={20} /> Retour
         </button>
 
         <Button
-          className="bg-green-600 hover:bg-green-700 text-white"
+          className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white flex items-center gap-2"
           onClick={() => setShowModal(true)}
         >
           <CheckCircle className="h-4 w-4 mr-2" />
@@ -118,12 +129,11 @@ export default function CommandeDetail() {
 
       {/* TITRE */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold dark:text-gray-100">
           Commande #{c.id}
         </h1>
-        <p className="text-gray-600 mt-1">
-          Réception : <b>{c.dateReception}</b> — Livraison :{" "}
-          <b>{c.dateLivraison}</b>
+        <p className="text-gray-600 mt-1 dark:text-gray-300">
+          Réception : <b>{c.dateReception}</b> — Livraison : <b>{c.dateLivraison}</b>
         </p>
       </div>
 
@@ -131,92 +141,52 @@ export default function CommandeDetail() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
         {/* CLIENT */}
-        <Card className="p-6 shadow-sm border-l-4 border-blue-600">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+        <Card className="p-6 shadow-sm border-l-4 border-blue-600 dark:bg-gray-800">
+          <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">
             Informations Client
           </h2>
           <div className="space-y-2 text-sm">
-            <p>
-              <b>Nom :</b> {c.clientNom}
-            </p>
-            <p>
-              <b>Téléphone :</b> {c.clientTelephone}
-            </p>
+            <p><b>Nom :</b> {client?.nom}</p>
+            <p><b>Téléphone :</b> {client?.telephone}</p>
           </div>
         </Card>
 
-        {/* ARTICLE */}
-        <Card className="p-6 shadow-sm border-l-4 border-green-600">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
-            Article & Service
+        {/* ARTICLES */}
+        <Card className="p-6 shadow-sm border-l-4 border-green-600 dark:bg-gray-800">
+          <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">
+            Articles & Services
           </h2>
           <div className="space-y-2 text-sm">
-            <p>
-              <b>Article :</b> {c.article}
-            </p>
-            <p>
-              <b>Service :</b> {c.service}
-            </p>
-            <p>
-              <b>Quantité :</b> {c.qte}
-            </p>
-
-            {/* KILO */}
-            {c.kilo !== null && (
-              <p>
-                <b>Kilo :</b> {c.kilo} kg
+            {c.articles?.map((a: any) => (
+              <p key={a.id}>
+                <b>{a.article} / {a.service}</b> : {a.qte} {a.kilo ? `kg` : "pcs"}
               </p>
-            )}
-
-            <p>
-              <b>Prix unitaire :</b>{" "}
-              {Number(c.prix).toLocaleString()} FCFA
-            </p>
+            ))}
           </div>
         </Card>
 
         {/* MONTANTS */}
-        <Card className="p-6 shadow-sm bg-gray-50 border">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+        <Card className="p-6 shadow-sm bg-gray-50 border dark:bg-gray-800">
+          <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">
             Montants
           </h2>
           <div className="space-y-2 text-sm">
-            <p>
-              <b>Montant brut :</b>{" "}
-              {Number(c.montantBrut).toLocaleString()} FCFA
-            </p>
-            <p>
-              <b>Remise :</b>{" "}
-              {Number(c.remise).toLocaleString()} FCFA
-            </p>
-            <p>
-              <b>Net :</b>{" "}
-              {Number(c.montantNet).toLocaleString()} FCFA
-            </p>
-            <p>
-              <b>Payé :</b>{" "}
-              {Number(c.montantPaye).toLocaleString()} FCFA
-            </p>
-
-            <p
-              className={`font-bold ${
-                resteAPayer === 0
-                  ? "text-green-600"
-                  : "text-red-600"
-              }`}
-            >
+            <p><b>Montant brut :</b> {c.articles?.reduce((sum: number, a: any) => sum + a.montantBrut, 0).toLocaleString()} FCFA</p>
+            <p><b>Remise :</b> {c.remiseGlobale?.toLocaleString() ?? 0} FCFA</p>
+            <p><b>Net :</b> {c.montantNetTotal?.toLocaleString() ?? 0} FCFA</p>
+            <p><b>Payé :</b> {Number(c.montantPaye ?? 0).toLocaleString()} FCFA</p>
+            <p className={`font-bold ${resteAPayer === 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
               Reste à payer : {resteAPayer.toLocaleString()} FCFA
             </p>
-
             <p>
               <b>Statut paiement :</b>{" "}
               <Badge
                 className={`px-3 py-1 text-white ${
                   c.statutPaiement === "Payé"
-                    ? "bg-green-600"
+                    ? "bg-green-600 dark:bg-green-700"
                     : c.statutPaiement === "Partiel"
-                    ? "bg-orange-500"
-                    : "bg-red-500"
+                    ? "bg-orange-500 dark:bg-orange-600"
+                    : "bg-red-500 dark:bg-red-600"
                 }`}
               >
                 {c.statutPaiement}
@@ -228,9 +198,9 @@ export default function CommandeDetail() {
 
       {/* MODAL */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md dark:bg-gray-800 dark:text-gray-100">
           <DialogHeader>
-            <DialogTitle className="text-lg">
+            <DialogTitle className="text-lg dark:text-gray-100">
               Confirmer le paiement et le statut
             </DialogTitle>
           </DialogHeader>
@@ -238,7 +208,7 @@ export default function CommandeDetail() {
           <div className="space-y-4 mt-2">
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 Montant payé
               </label>
               <Input
@@ -248,6 +218,7 @@ export default function CommandeDetail() {
                 min={0}
                 max={resteAPayer}
                 onChange={(e) => setMontantActuel(e.target.value)}
+                className="dark:bg-gray-700 dark:text-white"
               />
               {!montantValide && (
                 <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -257,7 +228,7 @@ export default function CommandeDetail() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 Statut commande
               </label>
               <Select
@@ -266,11 +237,10 @@ export default function CommandeDetail() {
                   setNouveauStatut(v as "EN_COURS" | "LIVREE")
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white">
                   <SelectValue placeholder="Sélectionner le statut" />
                 </SelectTrigger>
-
-                <SelectContent>
+                <SelectContent className="dark:bg-gray-700 dark:text-white">
                   <SelectItem value="EN_COURS">EN COURS</SelectItem>
                   <SelectItem value="LIVREE">LIVRÉE</SelectItem>
                 </SelectContent>
@@ -282,11 +252,12 @@ export default function CommandeDetail() {
             <Button
               variant="outline"
               onClick={() => setShowModal(false)}
+              className="dark:border-gray-600 dark:text-gray-100"
             >
               Annuler
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white"
               disabled={!montantValide}
               onClick={handleValiderPaiement}
             >

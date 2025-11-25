@@ -66,29 +66,29 @@ export default function Rapports() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold flex items-center gap-2">
-        <DollarSign className="text-blue-600" /> État
+    <div className="p-6 space-y-6 dark:bg-gray-900 dark:text-gray-100">
+      <h1 className="text-3xl font-bold flex items-center gap-2 dark:text-gray-100">
+        <DollarSign className="text-blue-600 dark:text-blue-400" /> État
       </h1>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="bg-white p-6 shadow-md">
-          <p className="text-sm opacity-90">Chiffre d'affaires</p>
-          <p className="text-3xl font-bold">
+        <Card className="bg-white dark:bg-gray-800 p-6 shadow-md">
+          <p className="text-sm opacity-90 dark:text-gray-300">Chiffre d'affaires</p>
+          <p className="text-3xl font-bold dark:text-gray-100">
             {commandes.toLocaleString("fr-FR")} FCFA
           </p>
         </Card>
 
-        <Card className="bg-white p-6 shadow-md">
-          <p className="text-sm text-muted-foreground">Total Charges</p>
-          <p className="text-3xl font-bold">
+        <Card className="bg-white dark:bg-gray-800 p-6 shadow-md">
+          <p className="text-sm text-muted-foreground dark:text-gray-300">Total Charges</p>
+          <p className="text-3xl font-bold dark:text-gray-100">
             {charges.toLocaleString("fr-FR")} FCFA
           </p>
         </Card>
 
-        <Card className="bg-white p-6 shadow-md">
-          <p className="text-sm text-muted-foreground">Résultat Net</p>
-          <p className="text-3xl font-bold">
+        <Card className="bg-white dark:bg-gray-800 p-6 shadow-md">
+          <p className="text-sm text-muted-foreground dark:text-gray-300">Résultat Net</p>
+          <p className="text-3xl font-bold dark:text-gray-100">
             {net.toLocaleString("fr-FR")} FCFA
           </p>
         </Card>
@@ -96,7 +96,7 @@ export default function Rapports() {
 
       <Button
         onClick={generatePDF}
-        className="mt-6 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+        className="mt-6 flex items-center gap-2 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white"
       >
         <FileText className="w-4 h-4" />
         Télécharger l’état

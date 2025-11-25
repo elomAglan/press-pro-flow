@@ -6,9 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Pencil, Trash, Download, FileText } from "lucide-react";
-
-// PDF
+import { Search, Plus, Pencil, Trash, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -58,7 +56,6 @@ export default function Clients() {
     fetchClients();
   }, []);
 
-  // FILTRAGE
   const statusMap: Record<FilterType, ClientStatus | null> = {
     all: null,
     actif: 'Actif',
@@ -134,19 +131,15 @@ export default function Clients() {
 
   const getStatusBadge = (status: ClientStatus) =>
     status === "Actif"
-      ? <Badge className="bg-green-500 text-green-900">Actif</Badge>
-      : <Badge className="bg-red-100 text-red-700">Inactif</Badge>;
+      ? <Badge className="bg-green-500 dark:bg-green-700 text-green-900 dark:text-green-100">Actif</Badge>
+      : <Badge className="bg-red-100 dark:bg-red-600 text-red-700 dark:text-red-100">Inactif</Badge>;
 
-  // ------------------------------------------
-  //            EXPORT PDF
-  // ------------------------------------------
   const exportPDF = () => {
     const doc = new jsPDF();
     const exportDate = new Date().toLocaleString();
 
     doc.setFontSize(18);
     doc.text("Liste des Clients", 14, 20);
-
     doc.setFontSize(11);
     doc.text(`Exporté le : ${exportDate}`, 14, 28);
 
@@ -167,24 +160,23 @@ export default function Clients() {
   };
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-6 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
+      {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Clients ({filteredClients.length})</h1>
-
         <div className="flex gap-2">
-          {/* EXPORT PDF BUTTON */}
-          <Button onClick={exportPDF} className="bg-green-600 hover:bg-green-700 text-white">
+          <Button onClick={exportPDF} className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800">
             <FileText className="w-4 h-4 mr-2" />
             Exporter PDF
           </Button>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800">
                 <Plus className="w-4 h-4 mr-2" /> Nouveau Client
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
               <DialogHeader>
                 <DialogTitle>{editingClient ? "Modifier Client" : "Ajouter Client"}</DialogTitle>
               </DialogHeader>
@@ -192,19 +184,19 @@ export default function Clients() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <Label>Nom</Label>
-                  <Input id="nom" value={formData.nom} onChange={handleFormChange} required />
+                  <Input id="nom" value={formData.nom} onChange={handleFormChange} className="dark:bg-gray-700 dark:text-white" required />
                 </div>
                 <div>
                   <Label>Téléphone</Label>
-                  <Input id="telephone" value={formData.telephone} onChange={handleFormChange} required />
+                  <Input id="telephone" value={formData.telephone} onChange={handleFormChange} className="dark:bg-gray-700 dark:text-white" required />
                 </div>
                 <div>
                   <Label>Adresse</Label>
-                  <Input id="adresse" value={formData.adresse} onChange={handleFormChange} required />
+                  <Input id="adresse" value={formData.adresse} onChange={handleFormChange} className="dark:bg-gray-700 dark:text-white" required />
                 </div>
 
                 <DialogFooter>
-                  <Button type="submit" className="bg-blue-600 text-white w-full" disabled={isLoading}>
+                  <Button type="submit" className="bg-blue-600 text-white dark:bg-blue-700 dark:hover:bg-blue-800 w-full" disabled={isLoading}>
                     {editingClient ? "Sauvegarder" : "Ajouter"}
                   </Button>
                 </DialogFooter>
@@ -214,60 +206,50 @@ export default function Clients() {
         </div>
       </div>
 
+      {/* SEARCH */}
       <div className="relative">
-        <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-300" />
         <Input
           placeholder="Rechercher client..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="pl-10"
+          className="pl-10 dark:bg-gray-700 dark:text-white"
         />
       </div>
 
-      {isLoading && <p className="text-center text-gray-500">Chargement...</p>}
+      {isLoading && <p className="text-center text-gray-500 dark:text-gray-300">Chargement...</p>}
 
+      {/* TABLE */}
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-200 bg-white rounded-lg">
-          <thead className="bg-gray-50">
+        <table className="min-w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-4 py-3 text-left">Id</th>
-              <th className="px-4 py-3 text-left">Nom</th>
-              <th className="px-4 py-3 text-left">Téléphone</th>
-              <th className="px-4 py-3 text-left">Adresse</th>
-              <th className="px-4 py-3 text-left">Statut</th>
-              <th className="px-4 py-3 text-left">Date</th>
-              <th className="px-4 py-3 text-left">Actions</th>
+              <th className="px-4 py-3 text-left text-gray-900 dark:text-gray-100">Id</th>
+              <th className="px-4 py-3 text-left text-gray-900 dark:text-gray-100">Nom</th>
+              <th className="px-4 py-3 text-left text-gray-900 dark:text-gray-100">Téléphone</th>
+              <th className="px-4 py-3 text-left text-gray-900 dark:text-gray-100">Adresse</th>
+              <th className="px-4 py-3 text-left text-gray-900 dark:text-gray-100">Statut</th>
+              <th className="px-4 py-3 text-left text-gray-900 dark:text-gray-100">Date</th>
+              <th className="px-4 py-3 text-left text-gray-900 dark:text-gray-100">Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {filteredClients.map(c => (
-              <tr key={c.id} className="hover:bg-gray-50">
+              <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-4 py-3">{c.id}</td>
                 <td className="px-4 py-3">{c.nom}</td>
                 <td className="px-4 py-3">{c.telephone}</td>
                 <td className="px-4 py-3">{c.adresse}</td>
                 <td className="px-4 py-3">{getStatusBadge(c.status)}</td>
                 <td className="px-4 py-3">{new Date(c.date).toLocaleDateString()}</td>
-
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(c)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600"
-                      onClick={() => handleDelete(c.id)}
-                    >
-                      <Trash className="w-4 h-4" />
-                    </Button>
-                  </div>
+                <td className="px-4 py-3 flex gap-2">
+                  <Button size="sm" variant="outline" className="dark:border-gray-600 dark:text-gray-100" onClick={() => handleEdit(c)}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-red-600 dark:text-red-400 dark:border-red-500" onClick={() => handleDelete(c.id)}>
+                    <Trash className="w-4 h-4" />
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -275,7 +257,7 @@ export default function Clients() {
         </table>
 
         {filteredClients.length === 0 && !isLoading && (
-          <p className="text-center text-gray-500 py-8">Aucun client trouvé</p>
+          <p className="text-center text-gray-500 dark:text-gray-300 py-8">Aucun client trouvé</p>
         )}
       </div>
     </div>

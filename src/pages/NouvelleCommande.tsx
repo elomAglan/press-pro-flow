@@ -3,8 +3,6 @@ import {
   Plus,
   Trash2,
   X,
-  Calendar,
-  User,
   ShoppingCart,
   Shirt,
   Loader2,
@@ -24,8 +22,7 @@ type Article = {
   service: string;
   quantite: number;
   prixUnitaire: number;
-  parametreId: number; // ✅ Ajout du parametreId
-   kilo?: number | null;
+  parametreId: number;
 };
 
 // ---- UI COMPONENTS --------------------------------------------
@@ -77,17 +74,11 @@ export default function NouvelleCommande({ onCancel }: any) {
     client: "",
     dateReception: new Date().toISOString().slice(0, 10),
     dateLivraison: "",
-    remise: 0,
+    remiseGlobale: 0,
     montantPaye: 0,
-    kilo: null,
   });
 
-  const [draft, setDraft] = useState({ 
-    type: "", 
-    service: "", 
-    quantite: 1 
-  });
-  
+  const [draft, setDraft] = useState({ type: "", service: "", quantite: 1 });
   const [articles, setArticles] = useState<Article[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [tarifs, setTarifs] = useState<Parametre[]>([]);
@@ -100,10 +91,8 @@ export default function NouvelleCommande({ onCancel }: any) {
       .catch(console.error);
   }, []);
 
-  // ✅ Récupérer uniquement les articles uniques
   const types = useMemo(() => [...new Set(tarifs.map((t) => t.article))], [tarifs]);
 
-  // ✅ Filtrer les services selon l'article sélectionné
   const servicesForSelectedType = useMemo(() => {
     if (!draft.type) return [];
     return tarifs
@@ -111,7 +100,6 @@ export default function NouvelleCommande({ onCancel }: any) {
       .map((t) => ({ id: t.id, service: t.service, prix: t.prix }));
   }, [draft.type, tarifs]);
 
-  // ✅ Prix du service sélectionné
   const draftPrice = useMemo(() => {
     if (!draft.type || !draft.service) return 0;
     const tarif = tarifs.find(
@@ -120,7 +108,6 @@ export default function NouvelleCommande({ onCancel }: any) {
     return tarif?.prix ?? 0;
   }, [draft, tarifs]);
 
-  // ✅ Ajouter un article avec son parametreId
   const addArticle = () => {
     if (!draft.type || !draft.service) {
       alert("Veuillez sélectionner un article et un service.");
@@ -144,7 +131,7 @@ export default function NouvelleCommande({ onCancel }: any) {
         service: draft.service,
         quantite: draft.quantite,
         prixUnitaire: tarif.prix,
-        parametreId: tarif.id, // ✅ Stocker le parametreId
+        parametreId: tarif.id,
       },
     ]);
 
@@ -156,7 +143,7 @@ export default function NouvelleCommande({ onCancel }: any) {
     [articles]
   );
 
-  const totalNet = Math.max(0, total - cmd.remise);
+  const totalNet = Math.max(0, total - cmd.remiseGlobale);
 
   const handleSubmit = async () => {
     if (!cmd.client || articles.length === 0 || !cmd.dateLivraison) {
@@ -167,18 +154,14 @@ export default function NouvelleCommande({ onCancel }: any) {
     try {
       setLoading(true);
 
-      // ✅ Utiliser le premier article pour définir le parametreId
-      const firstArticle = articles[0];
-
       const body = {
         clientId: Number(cmd.client),
-        parametreId: firstArticle.parametreId, // ✅ Envoyer le bon parametreId
-        qte: articles.reduce((sum, a) => sum + a.quantite, 0),
-        remise: cmd.remise,
+        parametreIds: articles.map((a) => a.parametreId),
+        qtes: articles.map((a) => a.quantite),
+        remiseGlobale: cmd.remiseGlobale,
         montantPaye: cmd.montantPaye,
         dateReception: cmd.dateReception,
         dateLivraison: cmd.dateLivraison,
-        kilo: cmd.kilo,
       };
 
       const token = localStorage.getItem("authToken");
@@ -225,69 +208,47 @@ export default function NouvelleCommande({ onCancel }: any) {
         </Button>
       </div>
 
-     {/* CLIENT */}
-<Card className="space-y-5">
-  <div className="grid md:grid-cols-3 gap-5">
-    {/* Client */}
-    <div className="space-y-1">
-      <Label>Client</Label>
-      <Select
-        value={cmd.client}
-        onChange={(v) => setCmd({ ...cmd, client: v })}
-      >
-        <option value="">Sélectionner un client</option>
-        {clients.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.telephone} — {c.nom}
-          </option>
-        ))}
-      </Select>
-    </div>
+      {/* CLIENT */}
+      <Card className="space-y-5">
+        <div className="grid md:grid-cols-3 gap-5">
+          <div className="space-y-1">
+            <Label>Client</Label>
+            <Select
+              value={cmd.client}
+              onChange={(v) => setCmd({ ...cmd, client: v })}
+            >
+              <option value="">Sélectionner un client</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.telephone} — {c.nom}
+                </option>
+              ))}
+            </Select>
+          </div>
 
-    {/* Date de réception */}
-    <div className="space-y-1">
-      <Label>Date de réception</Label>
-      <Input
-        type="date"
-        value={cmd.dateReception}
-        onChange={(e) =>
-          setCmd({ ...cmd, dateReception: e.target.value })
-        }
-      />
-    </div>
+          <div className="space-y-1">
+            <Label>Date de réception</Label>
+            <Input
+              type="date"
+              value={cmd.dateReception}
+              onChange={(e) =>
+                setCmd({ ...cmd, dateReception: e.target.value })
+              }
+            />
+          </div>
 
-    {/* Date de livraison */}
-    <div className="space-y-1">
-      <Label>Date de livraison</Label>
-      <Input
-        type="date"
-        value={cmd.dateLivraison}
-        onChange={(e) =>
-          setCmd({ ...cmd, dateLivraison: e.target.value })
-        }
-      />
-    </div>
-
-    {/* Kilo (optionnel) */}
-    <div className="space-y-1">
-      <Label>Kilo </Label>
-      <Input
-        type="number"
-        min={0}
-        step={0.1}
-        placeholder="Ex: 1.5"
-        value={cmd.kilo ?? ""}
-        onChange={(e) =>
-          setCmd({
-            ...cmd,
-            kilo: e.target.value ? parseFloat(e.target.value) : null,
-          })
-        }
-      />
-    </div>
-  </div>
-</Card>
-
+          <div className="space-y-1">
+            <Label>Date de livraison</Label>
+            <Input
+              type="date"
+              value={cmd.dateLivraison}
+              onChange={(e) =>
+                setCmd({ ...cmd, dateLivraison: e.target.value })
+              }
+            />
+          </div>
+        </div>
+      </Card>
 
       {/* ARTICLES */}
       <Card className="space-y-4">
@@ -337,8 +298,8 @@ export default function NouvelleCommande({ onCancel }: any) {
             />
           </div>
 
-          <Button 
-            className="bg-green-600 hover:bg-green-700 mt-6" 
+          <Button
+            className="bg-green-600 hover:bg-green-700 mt-6"
             onClick={addArticle}
             disabled={!draft.type || !draft.service}
           >
@@ -370,7 +331,8 @@ export default function NouvelleCommande({ onCancel }: any) {
                   {a.type} — {a.service}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {a.quantite} × {a.prixUnitaire.toLocaleString()} FCFA = {(a.quantite * a.prixUnitaire).toLocaleString()} FCFA
+                  {a.quantite} × {a.prixUnitaire.toLocaleString()} FCFA ={" "}
+                  {(a.quantite * a.prixUnitaire).toLocaleString()} FCFA
                 </p>
               </div>
 
@@ -384,7 +346,6 @@ export default function NouvelleCommande({ onCancel }: any) {
           ))
         )}
 
-        {/* TOTALS */}
         {articles.length > 0 && (
           <div className="space-y-3 border-t pt-3">
             <div className="flex justify-between font-semibold text-lg">
@@ -401,8 +362,10 @@ export default function NouvelleCommande({ onCancel }: any) {
               <Input
                 type="number"
                 min={0}
-                value={cmd.remise}
-                onChange={(e) => setCmd({ ...cmd, remise: +e.target.value })}
+                value={cmd.remiseGlobale}
+                onChange={(e) =>
+                  setCmd({ ...cmd, remiseGlobale: +e.target.value })
+                }
               />
             </div>
 

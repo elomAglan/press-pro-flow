@@ -2,18 +2,90 @@ import { apiFetch } from "./api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// 🔹 Lister toutes les commandes
-export async function getAllCommandes() {
-  // 🚨 Note : le champ "kilo" dans les commandes peut être null, c'est juste une info
-  return apiFetch("/api/commande", { method: "GET" });
+// ========================= PARAMETRES (CACHE) =========================
+
+let parametresCache: any[] | null = null;
+
+async function getParametres() {
+  if (!parametresCache) {
+    parametresCache = await apiFetch("/api/parametre", { method: "GET" });
+  }
+  return parametresCache;
 }
 
-// 🔹 Créer une commande avec PDF
-export async function createCommandeAvecPdf(commandeData: any) {
+// ========================= MAPPING ARTICLES / SERVICES =========================
+
+function mapCommande(c: any, parametres: any[]) {
+  const articles = c.parametreIds?.map((id: number, idx: number) => {
+    const param = parametres.find((p) => p.id === id);
+
+    return {
+      id,
+
+      // 🔹 Détection automatique du nom d’article selon le backend
+      article:
+        param?.article ??
+        param?.nom ??
+        param?.designation ??
+        param?.label ??
+        param?.type ??
+        "Inconnu",
+
+      // 🔹 Détection automatique du service
+      service:
+        param?.service ??
+        param?.categorie ??
+        param?.type ??
+        param?.nom ??
+        "Inconnu",
+
+      qte: c.qtes?.[idx] ?? 0,
+      montantBrut: c.montantsBruts?.[idx] ?? 0,
+      montantNet: c.montantsNets?.[idx] ?? 0,
+    };
+  }) ?? [];
+
+  return {
+    ...c,
+    articles,
+    articleListe: articles.map((a) => a.article).join(", "),
+    serviceListe: articles.map((a) => a.service).join(", "),
+    montantNetTotal: articles.reduce((sum, a) => sum + a.montantNet, 0),
+  };
+}
+
+// ========================= GET ALL COMMANDES =========================
+
+export async function getAllCommandes() {
+  const commandes = await apiFetch("/api/commande", { method: "GET" });
+  const parametres = await getParametres();
+
+  return commandes.map((c: any) => mapCommande(c, parametres));
+}
+
+// ========================= GET COMMANDE BY ID =========================
+
+export async function getCommandeById(id: number) {
+  const commande = await apiFetch(`/api/commande/${id}`, { method: "GET" });
+  const parametres = await getParametres();
+
+  return mapCommande(commande, parametres);
+}
+
+// ========================= CREATE COMMANDE + PDF =========================
+
+export async function createCommandeAvecPdf() {
   const token = localStorage.getItem("authToken");
 
-  // 🚨 Note : "kilo" peut être null ou un nombre (ex: 1.5)
-  const bodyData = JSON.stringify(commandeData);
+  const bodyData = JSON.stringify({
+    clientId: 1,
+    parametreIds: [60, 63, 21],
+    qtes: [2, 3, 1],
+    remiseGlobale: 500,
+    montantPaye: 0,
+    dateReception: "2025-11-25",
+    dateLivraison: "2025-11-28",
+  });
 
   const response = await fetch(`${API_BASE_URL}/api/commande/pdf`, {
     method: "POST",
@@ -26,7 +98,6 @@ export async function createCommandeAvecPdf(commandeData: any) {
 
   if (!response.ok) {
     const text = await response.text();
-    console.error("Erreur PDF:", response.status, text);
     throw new Error(`Erreur serveur: ${text || response.statusText}`);
   }
 
@@ -36,20 +107,14 @@ export async function createCommandeAvecPdf(commandeData: any) {
   window.URL.revokeObjectURL(url);
 }
 
-// 🔹 Récupérer une commande par ID
-export async function getCommandeById(id: number) {
-  // 🚨 "kilo" peut être null dans la commande retournée
-  return apiFetch(`/api/commande/${id}`, { method: "GET" });
-}
+// ========================= UPDATE STATUT =========================
 
-// 🔹 Mettre à jour le statut d'une commande avec le montant actuel
 export async function updateStatutCommandeAvecMontant(
   id: number,
   payload: { statut: string; montantActuel: number }
 ) {
   const token = localStorage.getItem("authToken");
 
-  // 🚨 "kilo" n'est pas modifié ici, mais peut exister dans la commande
   const res = await fetch(`${API_BASE_URL}/api/commande/${id}/statut`, {
     method: "POST",
     headers: {
@@ -63,52 +128,44 @@ export async function updateStatutCommandeAvecMontant(
   return res.json();
 }
 
-// 🔹 Supprimer une commande
+// ========================= DELETE =========================
+
 export async function deleteCommande(id: number) {
-  // 🚨 "kilo" peut exister dans la commande supprimée, c'est juste une info
   return apiFetch(`/api/commande/${id}`, { method: "DELETE" });
 }
 
-// ==================== STATISTIQUES ====================
+// ========================= STATS =========================
 
-// 🔹 Nombre total de commandes du jour
 export async function getCommandesTotalParJour() {
   return apiFetch("/api/commande/total", { method: "GET" });
 }
 
-// 🔹 Nombre de commandes LIVRÉES du jour
 export async function getCommandesLivreeParJour() {
   return apiFetch("/api/commande/livree", { method: "GET" });
 }
 
-// 🔹 Nombre de commandes EN COURS du jour
 export async function getCommandesEnCoursParJour() {
   return apiFetch("/api/commande/cours", { method: "GET" });
 }
 
-// ==================== CHIFFRE D’AFFAIRES ====================
+// ========================= CHIFFRE D'AFFAIRES =========================
 
-// 🔹 CA Journalier
 export async function getCAJournalier() {
   return apiFetch("/api/commande/jour", { method: "GET" });
 }
 
-// 🔹 CA Hebdomadaire
 export async function getCAHebdo() {
   return apiFetch("/api/commande/hebdo", { method: "GET" });
 }
 
-// 🔹 CA Mensuel
 export async function getCAMensuel() {
   return apiFetch("/api/commande/mensuel", { method: "GET" });
 }
 
-// 🔹 CA Annuel
 export async function getCAAnnuel() {
   return apiFetch("/api/commande/annuel", { method: "GET" });
 }
 
-// 🔹 Total des impayés
 export async function getCAImpayes() {
   return apiFetch("/api/commande/impayes", { method: "GET" });
 }

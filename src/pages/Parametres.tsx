@@ -22,7 +22,7 @@ export default function Parametres() {
     telephone: "",
     cel: "",
     adresse: "",
-    logo: "", 
+    logo: "",
     id: undefined,
   });
 
@@ -91,11 +91,11 @@ export default function Parametres() {
     }
 
     setIsLoading(true);
-    const logoToSend = form.logo || null; 
+    const logoToSend = form.logo || null;
 
     try {
       if (dialogMode === "create") {
-        await createPressing({ ...form, logo: logoToSend }); 
+        await createPressing({ ...form, logo: logoToSend });
       } else if (dialogMode === "edit" && pressing) {
         await updatePressing({ ...form, logo: logoToSend, id: pressing.id });
       }
@@ -122,14 +122,14 @@ export default function Parametres() {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-4xl mx-auto space-y-6">
-        
+
         {/* HEADER */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Paramètres du Pressing</h1>
-            <p className="text-gray-500 mt-1">Gérez les informations de votre établissement</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Paramètres du Pressing</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">Gérez les informations de votre établissement</p>
           </div>
 
           <div className="flex gap-2">
@@ -146,7 +146,7 @@ export default function Parametres() {
             <button
               onClick={loadPressing}
               disabled={isLoading}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center gap-2 transition"
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100 rounded-lg flex items-center gap-2 transition"
             >
               {isLoading ? (
                 <Loader2 className="animate-spin" size={18} />
@@ -166,7 +166,7 @@ export default function Parametres() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg">
             <p className="font-medium">Erreur</p>
             <p className="text-sm">{error}</p>
           </div>
@@ -174,11 +174,11 @@ export default function Parametres() {
 
         {/* PRESSING INFO */}
         {pressing ? (
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            <div className="p-6"> 
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+            <div className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="rounded-full bg-white border-4 border-white shadow-lg overflow-hidden flex-shrink-0 w-24 h-24 flex items-center justify-center">
+                  <div className="rounded-full bg-white dark:bg-gray-700 border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden flex-shrink-0 w-24 h-24 flex items-center justify-center">
                     <img 
                       src={getLogoSource(pressing.logo)} 
                       alt={pressing.nom} 
@@ -186,55 +186,56 @@ export default function Parametres() {
                       onError={(e) => { (e.target as HTMLImageElement).src = "/logo-default.png" }}
                     />
                   </div>
-
-                  <div className="mt-0"> 
-                    <h2 className="text-2xl font-bold text-gray-900">{pressing.nom}</h2>
-                    {pressing.email && <p className="text-gray-500 text-sm mt-1">{pressing.email}</p>}
+                  <div className="mt-0">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pressing.nom}</h2>
+                    {pressing.email && (
+                      <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{pressing.email}</p>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {pressing.email && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Mail size={20} className="text-blue-600" />
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
+                      <Mail size={20} className="text-blue-600 dark:text-blue-300" />
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 font-medium">Email</p>
-                      <p className="text-sm text-gray-900">{pressing.email}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Email</p>
+                      <p className="text-sm text-gray-900 dark:text-gray-100">{pressing.email}</p>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Phone size={20} className="text-green-600" />
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="p-2 bg-green-100 dark:bg-green-800 rounded-lg">
+                    <Phone size={20} className="text-green-600 dark:text-green-300" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 font-medium">Téléphone</p>
-                    <p className="text-sm text-gray-900">{pressing.telephone}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Téléphone</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">{pressing.telephone}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <MapPin size={20} className="text-purple-600" />
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
+                    <MapPin size={20} className="text-purple-600 dark:text-purple-300" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 font-medium">Adresse</p>
-                    <p className="text-sm text-gray-900">{pressing.adresse}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Adresse</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">{pressing.adresse}</p>
                   </div>
                 </div>
 
                 {pressing.cel && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <Smartphone size={20} className="text-orange-600" />
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-800 rounded-lg">
+                      <Smartphone size={20} className="text-orange-600 dark:text-orange-300" />
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 font-medium">Téléphone secondaire</p>
-                      <p className="text-sm text-gray-900">{pressing.cel}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Téléphone secondaire</p>
+                      <p className="text-sm text-gray-900 dark:text-gray-100">{pressing.cel}</p>
                     </div>
                   </div>
                 )}
@@ -243,13 +244,13 @@ export default function Parametres() {
           </div>
         ) : (
           !isLoading && (
-            <div className="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-12 text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-dashed border-gray-300 dark:border-gray-600 p-12 text-center">
               <div className="flex flex-col items-center">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                  <Building2 size={40} className="text-blue-600" />
+                <div className="w-20 h-20 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center mb-4">
+                  <Building2 size={40} className="text-blue-600 dark:text-blue-300" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun pressing configuré</h3>
-                <p className="text-gray-500 mb-6 max-w-md">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Aucun pressing configuré</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md">
                   Commencez par créer votre pressing pour gérer vos services et vos clients
                 </p>
                 <button
@@ -263,15 +264,15 @@ export default function Parametres() {
           )
         )}
 
-        {/* MODAL */}
+        {/* MODAL FORMULAIRE */}
         {isDialogOpen && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900">
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-600">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                   {dialogMode === "edit" ? "Configurer le Pressing" : "Créer un Pressing"}
                 </h2>
-                <p className="text-gray-500 text-sm mt-1">
+                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                   Renseignez les informations de votre établissement
                 </p>
               </div>
@@ -279,65 +280,66 @@ export default function Parametres() {
               <div className="p-6 space-y-5">
                 {/* Formulaire */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nom du pressing *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Nom du pressing *</label>
                   <input
                     type="text"
                     placeholder="Ex: Pressing du Centre"
                     value={form.nom}
                     onChange={e => setForm({ ...form, nom: e.target.value })}
-                    className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="border border-gray-300 dark:border-gray-600 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone principal *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Téléphone principal *</label>
                   <input
                     type="tel"
                     placeholder="+228 XX XX XX XX"
                     value={form.telephone}
                     onChange={e => setForm({ ...form, telephone: e.target.value })}
-                    className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="border border-gray-300 dark:border-gray-600 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Adresse *</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Adresse *</label>
                     <input
                       type="text"
                       placeholder="Ex: Lomé, Baguida"
                       value={form.adresse}
                       onChange={e => setForm({ ...form, adresse: e.target.value })}
-                      className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="border border-gray-300 dark:border-gray-600 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone secondaire</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Téléphone secondaire</label>
                     <input
                       type="tel"
                       placeholder="+228 XX XX XX XX"
                       value={form.cel || ""}
                       onChange={e => setForm({ ...form, cel: e.target.value })}
-                      className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="border border-gray-300 dark:border-gray-600 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                   </div>
                 </div>
-                
+
+                {/* Logo */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Logo</label>
                   {!previewLogo ? (
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleFileChange}
-                      className="border border-gray-300 p-2 w-full rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      className="border border-gray-300 dark:border-gray-600 p-2 w-full rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-800 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-700"
                     />
                   ) : (
                     <div className="relative inline-block">
                       <img
                         src={previewLogo}
-                        className="h-24 w-24 rounded-lg object-contain border border-gray-200 shadow-md"
+                        className="h-24 w-24 rounded-lg object-contain border border-gray-200 dark:border-gray-600 shadow-md"
                         alt="Aperçu du logo"
                         onError={(e) => { (e.target as HTMLImageElement).src = "/logo-default.png" }}
                       />
@@ -352,6 +354,7 @@ export default function Parametres() {
                   )}
                 </div>
 
+                {/* Boutons */}
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={handleSubmit}
@@ -363,7 +366,7 @@ export default function Parametres() {
                   </button>
                   <button
                     onClick={() => setIsDialogOpen(false)}
-                    className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition font-medium"
+                    className="px-6 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100 rounded-lg transition font-medium"
                   >
                     Annuler
                   </button>
@@ -372,6 +375,7 @@ export default function Parametres() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
