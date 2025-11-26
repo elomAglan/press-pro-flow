@@ -25,6 +25,23 @@ type Article = {
   parametreId: number;
 };
 
+type CommandeState = {
+  clientId: string;
+  dateReception: string;
+  dateLivraison: string;
+  remiseGlobale: number;
+  montantPaye: number;
+};
+
+type DraftArticle = {
+  type: string;
+  service: string;
+  quantite: number;
+};
+
+// ---- UTILS ----------------------------------------------------
+const getTodayString = () => new Date().toISOString().slice(0, 10);
+
 // ---- UI COMPONENTS --------------------------------------------
 const Card = ({ children, className = "" }: any) => (
   <div
@@ -69,21 +86,29 @@ const Button = ({ children, className = "", ...props }: any) => (
 // ---- MAIN COMPONENT -------------------------------------------
 export default function NouvelleCommande({ onCancel }: any) {
   const navigate = useNavigate();
+  const today = getTodayString();
 
-  const [cmd, setCmd] = useState({
-    client: "",
-    dateReception: new Date().toISOString().slice(0, 10),
+  // State principal propre et structuré
+  const [commande, setCommande] = useState<CommandeState>({
+    clientId: "",
+    dateReception: today,
     dateLivraison: "",
     remiseGlobale: 0,
     montantPaye: 0,
   });
 
-  const [draft, setDraft] = useState({ type: "", service: "", quantite: 1 });
+  const [draftArticle, setDraftArticle] = useState<DraftArticle>({
+    type: "",
+    service: "",
+    quantite: 1,
+  });
+
   const [articles, setArticles] = useState<Article[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [tarifs, setTarifs] = useState<Parametre[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Chargement initial
   useEffect(() => {
     getAllClients().then(setClients).catch(console.error);
     apiFetch("/api/parametre")
@@ -91,31 +116,55 @@ export default function NouvelleCommande({ onCancel }: any) {
       .catch(console.error);
   }, []);
 
-  const types = useMemo(() => [...new Set(tarifs.map((t) => t.article))], [tarifs]);
+  // Extraction des types d'articles uniques
+  const typesArticles = useMemo(
+    () => [...new Set(tarifs.map((t) => t.article))],
+    [tarifs]
+  );
 
-  const servicesForSelectedType = useMemo(() => {
-    if (!draft.type) return [];
+  // Services disponibles pour le type sélectionné
+  const servicesDisponibles = useMemo(() => {
+    if (!draftArticle.type) return [];
     return tarifs
-      .filter((t) => t.article === draft.type)
+      .filter((t) => t.article === draftArticle.type)
       .map((t) => ({ id: t.id, service: t.service, prix: t.prix }));
-  }, [draft.type, tarifs]);
+  }, [draftArticle.type, tarifs]);
 
-  const draftPrice = useMemo(() => {
-    if (!draft.type || !draft.service) return 0;
+  // Prix unitaire du draft actuel
+  const prixUnitaireDraft = useMemo(() => {
+    if (!draftArticle.type || !draftArticle.service) return 0;
     const tarif = tarifs.find(
-      (t) => t.article === draft.type && t.service === draft.service
+      (t) => t.article === draftArticle.type && t.service === draftArticle.service
     );
     return tarif?.prix ?? 0;
-  }, [draft, tarifs]);
+  }, [draftArticle, tarifs]);
 
-  const addArticle = () => {
-    if (!draft.type || !draft.service) {
+  // Calculs financiers
+  const montantTotal = useMemo(
+    () => articles.reduce((sum, a) => sum + a.prixUnitaire * a.quantite, 0),
+    [articles]
+  );
+
+  const montantNet = Math.max(0, montantTotal - commande.remiseGlobale);
+
+  // Handlers avec state propre
+  const updateCommande = (updates: Partial<CommandeState>) => {
+    setCommande((prev) => ({ ...prev, ...updates }));
+  };
+
+  const updateDraftArticle = (updates: Partial<DraftArticle>) => {
+    setDraftArticle((prev) => ({ ...prev, ...updates }));
+  };
+
+  const handleAjouterArticle = () => {
+    if (!draftArticle.type || !draftArticle.service) {
       alert("Veuillez sélectionner un article et un service.");
       return;
     }
 
     const tarif = tarifs.find(
-      (t) => t.article === draft.type && t.service === draft.service
+      (t) =>
+        t.article === draftArticle.type && t.service === draftArticle.service
     );
 
     if (!tarif) {
@@ -123,30 +172,25 @@ export default function NouvelleCommande({ onCancel }: any) {
       return;
     }
 
-    setArticles((a) => [
-      ...a,
-      {
-        id: crypto.randomUUID(),
-        type: draft.type,
-        service: draft.service,
-        quantite: draft.quantite,
-        prixUnitaire: tarif.prix,
-        parametreId: tarif.id,
-      },
-    ]);
+    const nouvelArticle: Article = {
+      id: crypto.randomUUID(),
+      type: draftArticle.type,
+      service: draftArticle.service,
+      quantite: draftArticle.quantite,
+      prixUnitaire: tarif.prix,
+      parametreId: tarif.id,
+    };
 
-    setDraft({ type: "", service: "", quantite: 1 });
+    setArticles((prev) => [...prev, nouvelArticle]);
+    setDraftArticle({ type: "", service: "", quantite: 1 });
   };
 
-  const total = useMemo(
-    () => articles.reduce((s, a) => s + a.prixUnitaire * a.quantite, 0),
-    [articles]
-  );
-
-  const totalNet = Math.max(0, total - cmd.remiseGlobale);
+  const handleSupprimerArticle = (articleId: string) => {
+    setArticles((prev) => prev.filter((a) => a.id !== articleId));
+  };
 
   const handleSubmit = async () => {
-    if (!cmd.client || articles.length === 0 || !cmd.dateLivraison) {
+    if (!commande.clientId || articles.length === 0 || !commande.dateLivraison) {
       alert("Veuillez remplir tous les champs et ajouter au moins un article.");
       return;
     }
@@ -155,24 +199,27 @@ export default function NouvelleCommande({ onCancel }: any) {
       setLoading(true);
 
       const body = {
-        clientId: Number(cmd.client),
+        clientId: Number(commande.clientId),
         parametreIds: articles.map((a) => a.parametreId),
         qtes: articles.map((a) => a.quantite),
-        remiseGlobale: cmd.remiseGlobale,
-        montantPaye: cmd.montantPaye,
-        dateReception: cmd.dateReception,
-        dateLivraison: cmd.dateLivraison,
+        remiseGlobale: commande.remiseGlobale,
+        montantPaye: commande.montantPaye,
+        dateReception: commande.dateReception,
+        dateLivraison: commande.dateLivraison,
       };
 
       const token = localStorage.getItem("authToken");
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(body),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(body),
+        }
+      );
 
       if (!response.ok) {
         const text = await response.text();
@@ -208,14 +255,14 @@ export default function NouvelleCommande({ onCancel }: any) {
         </Button>
       </div>
 
-      {/* CLIENT */}
+      {/* CLIENT ET DATES */}
       <Card className="space-y-5">
         <div className="grid md:grid-cols-3 gap-5">
           <div className="space-y-1">
             <Label>Client</Label>
             <Select
-              value={cmd.client}
-              onChange={(v) => setCmd({ ...cmd, client: v })}
+              value={commande.clientId}
+              onChange={(v) => updateCommande({ clientId: v })}
             >
               <option value="">Sélectionner un client</option>
               {clients.map((c) => (
@@ -230,10 +277,9 @@ export default function NouvelleCommande({ onCancel }: any) {
             <Label>Date de réception</Label>
             <Input
               type="date"
-              value={cmd.dateReception}
-              onChange={(e) =>
-                setCmd({ ...cmd, dateReception: e.target.value })
-              }
+              min={today}
+              value={commande.dateReception}
+              onChange={(e) => updateCommande({ dateReception: e.target.value })}
             />
           </div>
 
@@ -241,16 +287,15 @@ export default function NouvelleCommande({ onCancel }: any) {
             <Label>Date de livraison</Label>
             <Input
               type="date"
-              value={cmd.dateLivraison}
-              onChange={(e) =>
-                setCmd({ ...cmd, dateLivraison: e.target.value })
-              }
+              min={commande.dateReception || today}
+              value={commande.dateLivraison}
+              onChange={(e) => updateCommande({ dateLivraison: e.target.value })}
             />
           </div>
         </div>
       </Card>
 
-      {/* ARTICLES */}
+      {/* AJOUTER UN ARTICLE */}
       <Card className="space-y-4">
         <h2 className="text-lg font-bold flex items-center gap-2">
           <Shirt size={20} className="text-blue-600" /> Ajouter un article
@@ -260,13 +305,13 @@ export default function NouvelleCommande({ onCancel }: any) {
           <div>
             <Label>Article</Label>
             <Select
-              value={draft.type}
-              onChange={(v) => setDraft({ ...draft, type: v, service: "" })}
+              value={draftArticle.type}
+              onChange={(v) => updateDraftArticle({ type: v, service: "" })}
             >
               <option value="">Choisir...</option>
-              {types.map((l) => (
-                <option key={l} value={l}>
-                  {l}
+              {typesArticles.map((type) => (
+                <option key={type} value={type}>
+                  {type}
                 </option>
               ))}
             </Select>
@@ -275,12 +320,12 @@ export default function NouvelleCommande({ onCancel }: any) {
           <div>
             <Label>Service</Label>
             <Select
-              value={draft.service}
-              onChange={(v) => setDraft({ ...draft, service: v })}
-              disabled={!draft.type}
+              value={draftArticle.service}
+              onChange={(v) => updateDraftArticle({ service: v })}
+              disabled={!draftArticle.type}
             >
               <option value="">Choisir...</option>
-              {servicesForSelectedType.map((s) => (
+              {servicesDisponibles.map((s) => (
                 <option key={s.id} value={s.service}>
                   {s.service} - {s.prix.toLocaleString()} FCFA
                 </option>
@@ -293,23 +338,26 @@ export default function NouvelleCommande({ onCancel }: any) {
             <Input
               type="number"
               min={1}
-              value={draft.quantite}
-              onChange={(e) => setDraft({ ...draft, quantite: +e.target.value })}
+              value={draftArticle.quantite}
+              onChange={(e) =>
+                updateDraftArticle({ quantite: +e.target.value })
+              }
             />
           </div>
 
           <Button
             className="bg-green-600 hover:bg-green-700 mt-6"
-            onClick={addArticle}
-            disabled={!draft.type || !draft.service}
+            onClick={handleAjouterArticle}
+            disabled={!draftArticle.type || !draftArticle.service}
           >
             <Plus size={16} /> Ajouter
           </Button>
         </div>
 
-        {draftPrice > 0 && (
+        {prixUnitaireDraft > 0 && (
           <div className="text-sm text-gray-600 dark:text-gray-300">
-            Prix unitaire : <strong>{draftPrice.toLocaleString()} FCFA</strong>
+            Prix unitaire :{" "}
+            <strong>{prixUnitaireDraft.toLocaleString()} FCFA</strong>
           </div>
         )}
       </Card>
@@ -337,7 +385,7 @@ export default function NouvelleCommande({ onCancel }: any) {
               </div>
 
               <button
-                onClick={() => setArticles((x) => x.filter((i) => i.id !== a.id))}
+                onClick={() => handleSupprimerArticle(a.id)}
                 className="text-red-600 hover:text-red-800"
               >
                 <Trash2 size={18} />
@@ -350,7 +398,7 @@ export default function NouvelleCommande({ onCancel }: any) {
           <div className="space-y-3 border-t pt-3">
             <div className="flex justify-between font-semibold text-lg">
               <span>Total :</span>
-              <span>{total.toLocaleString()} FCFA</span>
+              <span>{montantTotal.toLocaleString()} FCFA</span>
             </div>
 
             <div className="space-y-1">
@@ -362,16 +410,16 @@ export default function NouvelleCommande({ onCancel }: any) {
               <Input
                 type="number"
                 min={0}
-                value={cmd.remiseGlobale}
+                value={commande.remiseGlobale}
                 onChange={(e) =>
-                  setCmd({ ...cmd, remiseGlobale: +e.target.value })
+                  updateCommande({ remiseGlobale: +e.target.value })
                 }
               />
             </div>
 
             <div className="flex justify-between font-bold text-2xl text-blue-600 mt-2">
               <span>Total Net :</span>
-              <span>{totalNet.toLocaleString()} FCFA</span>
+              <span>{montantNet.toLocaleString()} FCFA</span>
             </div>
 
             <div className="space-y-1 mt-3">
@@ -383,15 +431,17 @@ export default function NouvelleCommande({ onCancel }: any) {
               <Input
                 type="number"
                 min={0}
-                value={cmd.montantPaye}
-                onChange={(e) => setCmd({ ...cmd, montantPaye: +e.target.value })}
+                value={commande.montantPaye}
+                onChange={(e) =>
+                  updateCommande({ montantPaye: +e.target.value })
+                }
               />
             </div>
           </div>
         )}
       </Card>
 
-      {/* SUBMIT BUTTON */}
+      {/* BOUTON DE SOUMISSION */}
       <Button
         className={`w-full py-3 text-lg ${
           loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
