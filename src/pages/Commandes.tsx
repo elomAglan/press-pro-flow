@@ -16,6 +16,7 @@ export default function Commandes() {
   const [commandes, setCommandes] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");   // 👈 AJOUT
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,13 +33,17 @@ export default function Commandes() {
 
   const filtered = useMemo(() => {
     return commandes.filter((c) => {
-      const clientNom = c.clientNom ?? "";
-      const matchSearch =
-        clientNom.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = (c.clientNom ?? "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
       const matchDate = !filterDate || c.dateReception === filterDate;
-      return matchSearch && matchDate;
+
+      const matchStatus = !filterStatus || c.statut === filterStatus; // 👈 AJOUT
+
+      return matchSearch && matchDate && matchStatus;
     });
-  }, [commandes, searchTerm, filterDate]);
+  }, [commandes, searchTerm, filterDate, filterStatus]);
 
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -49,9 +54,10 @@ export default function Commandes() {
     doc.setFontSize(12);
     doc.text(`Exporté le : ${new Date().toLocaleString()}`, 14, 28);
 
-    if (filterDate) {
-      doc.text(`Date filtrée : ${filterDate}`, 14, 36);
-    }
+    if (filterDate) doc.text(`Date filtrée : ${filterDate}`, 14, 36);
+
+    if (filterStatus)
+      doc.text(`Statut filtré : ${filterStatus}`, 14, filterDate ? 44 : 36);
 
     const tableColumn = [
       "ID",
@@ -74,12 +80,17 @@ export default function Commandes() {
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: filterDate ? 42 : 36,
+      startY: filterDate || filterStatus ? 50 : 36,
       styles: { fontSize: 10 },
     });
 
-    doc.save(`commandes_${filterDate || "toutes"}_dates.pdf`);
+    doc.save(`commandes_${Date.now()}.pdf`);
   };
+
+  // Liste dynamique des statuts
+  const uniqueStatuses = Array.from(
+    new Set(commandes.map((c) => c.statut).filter(Boolean))
+  );
 
   return (
     <div className="p-6 space-y-6 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
@@ -107,6 +118,7 @@ export default function Commandes() {
 
       {/* Filtres */}
       <Card className="p-4 flex gap-4 dark:bg-gray-800">
+        {/* Recherche */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-300" />
           <Input
@@ -117,6 +129,7 @@ export default function Commandes() {
           />
         </div>
 
+        {/* Filtre date */}
         <div className="relative w-48">
           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-300" />
           <Input
@@ -126,9 +139,23 @@ export default function Commandes() {
             className="pl-10 dark:bg-gray-700 dark:text-white"
           />
         </div>
+
+        {/* Filtre statut 👇 */}
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="w-40 rounded-md border dark:bg-gray-700 dark:text-gray-100 px-3"
+        >
+          <option value="">Tous les statuts</option>
+          {uniqueStatuses.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
       </Card>
 
-      {/* Tableau avec scroll interne */}
+      {/* Tableau */}
       <Card className="overflow-hidden dark:bg-gray-800">
         <div className="max-h-[500px] overflow-y-auto">
           <table className="min-w-full border-collapse">
@@ -140,22 +167,33 @@ export default function Commandes() {
                 <th className="px-4 py-2 text-right dark:text-gray-100">Net</th>
                 <th className="px-4 py-2 text-left dark:text-gray-100">Livraison</th>
                 <th className="px-4 py-2 text-left dark:text-gray-100">Statut</th>
-                <th className="px-4 py-2 text-left dark:text-gray-100">Détails</th>
+                <th className="px-4 py-2 text-center dark:text-gray-100">Détails</th>
               </tr>
             </thead>
+
             <tbody>
               {filtered.length > 0 ? (
                 filtered.map((c) => (
-                  <tr key={c.id} className="border-t hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tr
+                    key={c.id}
+                    className="border-t hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
                     <td className="px-4 py-2">{c.id}</td>
                     <td className="px-4 py-2">{c.clientNom ?? ""}</td>
                     <td className="px-4 py-2">
-                      {c.articles?.reduce((sum: number, a: any) => sum + a.qte, 0) ?? 0}
+                      {c.articles?.reduce(
+                        (sum: number, a: any) => sum + a.qte,
+                        0
+                      ) ?? 0}
                     </td>
-                    <td className="px-4 py-2 text-right">{c.montantNetTotal?.toLocaleString("fr-FR") ?? "0"}</td>
+                    <td className="px-4 py-2 text-right">
+                      {c.montantNetTotal?.toLocaleString("fr-FR") ?? "0"}
+                    </td>
                     <td className="px-4 py-2">{c.dateLivraison ?? ""}</td>
                     <td className="px-4 py-2">
-                      <Badge className="bg-blue-200 dark:bg-blue-700 text-blue-800 dark:text-blue-100">{c.statut ?? ""}</Badge>
+                      <Badge className="bg-blue-200 dark:bg-blue-700 text-blue-800 dark:text-blue-100">
+                        {c.statut ?? ""}
+                      </Badge>
                     </td>
                     <td className="px-4 py-2 text-center">
                       <Button
@@ -169,7 +207,10 @@ export default function Commandes() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-500 dark:text-gray-300">
+                  <td
+                    colSpan={7}
+                    className="py-8 text-center text-gray-500 dark:text-gray-300"
+                  >
                     Aucune commande trouvée
                   </td>
                 </tr>

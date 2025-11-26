@@ -91,9 +91,14 @@ export default function Clients() {
     try {
       await deleteClient(id);
       setClients(clients.filter(c => c.id !== id));
-    } catch {
-      alert("Impossible de supprimer");
-    }
+    } catch (err: any) {
+  if (err?.response?.status === 400 || err?.response?.status === 409) {
+    alert("Impossible de supprimer ce client car il est associé à une ou plusieurs commandes.");
+  } else {
+    alert("Impossible de supprimer ce client car il est associé à une ou plusieurs commandes.");
+  }
+}
+
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
