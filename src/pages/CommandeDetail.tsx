@@ -116,12 +116,7 @@ async function handleValiderPaiement() {
             <ArrowLeft size={20} /> Retour
           </button>
 
-          <Button
-            className="bg-gray-600 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-800 text-white flex items-center gap-2"
-            onClick={handleDownloadPdf}
-          >
-            <FileText size={16} /> Télécharger PDF
-          </Button>
+
         </div>
 
         <Button
