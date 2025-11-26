@@ -190,8 +190,24 @@ export default function NouvelleCommande({ onCancel }: any) {
   };
 
   const handleSubmit = async () => {
-    if (!commande.clientId || articles.length === 0 || !commande.dateLivraison) {
-      alert("Veuillez remplir tous les champs et ajouter au moins un article.");
+    // Validation détaillée avec messages spécifiques
+    if (!commande.clientId) {
+      alert("⚠️ Veuillez sélectionner un client.");
+      return;
+    }
+
+    if (!commande.dateReception) {
+      alert("⚠️ Veuillez saisir la date de réception.");
+      return;
+    }
+
+    if (!commande.dateLivraison) {
+      alert("⚠️ Veuillez saisir la date de livraison.");
+      return;
+    }
+
+    if (articles.length === 0) {
+      alert("⚠️ Veuillez ajouter au moins un article à la commande.");
       return;
     }
 
