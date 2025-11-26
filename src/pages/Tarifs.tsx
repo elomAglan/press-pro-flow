@@ -12,11 +12,10 @@ interface Tarif {
 }
 
 const SERVICE_OPTIONS = [
-  "lavage a sec",
-  "lavage simple sans sechage",
-  "lavage-sechage-pliage",
-  "lavage-sechage-repassage",
-  "repassage simple",
+  "Lavage simple",
+  "Lavage + sechage",
+  "L+S + Repassage",
+  "Lavage Express",
 ];
 
 interface TarifFormModalProps {
