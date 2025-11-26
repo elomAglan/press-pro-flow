@@ -16,7 +16,7 @@ export default function Commandes() {
   const [commandes, setCommandes] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");   // 👈 AJOUT
+  const [filterStatus, setFilterStatus] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,11 +36,8 @@ export default function Commandes() {
       const matchSearch = (c.clientNom ?? "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-
       const matchDate = !filterDate || c.dateReception === filterDate;
-
-      const matchStatus = !filterStatus || c.statut === filterStatus; // 👈 AJOUT
-
+      const matchStatus = !filterStatus || c.statut === filterStatus;
       return matchSearch && matchDate && matchStatus;
     });
   }, [commandes, searchTerm, filterDate, filterStatus]);
@@ -55,7 +52,6 @@ export default function Commandes() {
     doc.text(`Exporté le : ${new Date().toLocaleString()}`, 14, 28);
 
     if (filterDate) doc.text(`Date filtrée : ${filterDate}`, 14, 36);
-
     if (filterStatus)
       doc.text(`Statut filtré : ${filterStatus}`, 14, filterDate ? 44 : 36);
 
@@ -72,7 +68,7 @@ export default function Commandes() {
       c.id,
       c.clientNom ?? "",
       c.articles?.reduce((sum: number, a: any) => sum + a.qte, 0) ?? 0,
-      c.montantNetTotal?.toLocaleString("fr-FR") ?? "0",
+      c.montantNetTotal != null ? String(c.montantNetTotal) : "0",
       c.dateLivraison ?? "",
       c.statut ?? "",
     ]);
@@ -87,7 +83,6 @@ export default function Commandes() {
     doc.save(`commandes_${Date.now()}.pdf`);
   };
 
-  // Liste dynamique des statuts
   const uniqueStatuses = Array.from(
     new Set(commandes.map((c) => c.statut).filter(Boolean))
   );
@@ -96,7 +91,8 @@ export default function Commandes() {
     <div className="p-6 space-y-6 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold flex items-center gap-2">
-          <List className="text-blue-600 dark:text-blue-400" /> Commandes
+          <List className="text-blue-600 dark:text-blue-400" />
+          Commandes
         </h1>
 
         <div className="flex gap-2">
@@ -116,9 +112,7 @@ export default function Commandes() {
         </div>
       </div>
 
-      {/* Filtres */}
       <Card className="p-4 flex gap-4 dark:bg-gray-800">
-        {/* Recherche */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-300" />
           <Input
@@ -129,7 +123,6 @@ export default function Commandes() {
           />
         </div>
 
-        {/* Filtre date */}
         <div className="relative w-48">
           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-300" />
           <Input
@@ -140,7 +133,6 @@ export default function Commandes() {
           />
         </div>
 
-        {/* Filtre statut 👇 */}
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -155,7 +147,6 @@ export default function Commandes() {
         </select>
       </Card>
 
-      {/* Tableau */}
       <Card className="overflow-hidden dark:bg-gray-800">
         <div className="max-h-[500px] overflow-y-auto">
           <table className="min-w-full border-collapse">
@@ -181,13 +172,12 @@ export default function Commandes() {
                     <td className="px-4 py-2">{c.id}</td>
                     <td className="px-4 py-2">{c.clientNom ?? ""}</td>
                     <td className="px-4 py-2">
-                      {c.articles?.reduce(
-                        (sum: number, a: any) => sum + a.qte,
-                        0
-                      ) ?? 0}
+                      {c.articles?.reduce((sum: number, a: any) => sum + a.qte, 0) ?? 0}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      {c.montantNetTotal?.toLocaleString("fr-FR") ?? "0"}
+                      {c.montantNetTotal != null
+                        ? c.montantNetTotal.toLocaleString("fr-FR")
+                        : "0"}
                     </td>
                     <td className="px-4 py-2">{c.dateLivraison ?? ""}</td>
                     <td className="px-4 py-2">
@@ -207,10 +197,7 @@ export default function Commandes() {
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="py-8 text-center text-gray-500 dark:text-gray-300"
-                  >
+                  <td colSpan={7} className="py-8 text-center text-gray-500 dark:text-gray-300">
                     Aucune commande trouvée
                   </td>
                 </tr>
