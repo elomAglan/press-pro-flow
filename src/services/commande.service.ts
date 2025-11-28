@@ -12,28 +12,21 @@ export async function getParametres() {
   return parametresCache;
 }
 
-// ========================= MAPPING ARTICLES / SERVICES =========================
+// ========================= MAPPING ARTICLES / SERVICES / KILO =========================
 function mapCommande(c: any, parametres: any[]) {
   const articles = c.parametreIds?.map((id: number, idx: number) => {
     const param = parametres.find((p) => p.id === id);
     return {
       id,
       article:
-        param?.article ??
-        param?.nom ??
-        param?.designation ??
-        param?.label ??
-        param?.type ??
-        "Inconnu",
+        param?.article ?? param?.nom ?? param?.designation ?? param?.label ?? param?.type ?? "Inconnu",
       service:
-        param?.service ??
-        param?.categorie ??
-        param?.type ??
-        param?.nom ??
-        "Inconnu",
+        param?.service ?? param?.categorie ?? param?.type ?? param?.nom ?? "Inconnu",
       qte: c.quantites?.[idx] ?? c.qtes?.[idx] ?? 0,
       montantBrut: c.montantsBruts?.[idx] ?? 0,
       montantNet: c.montantsNets?.[idx] ?? 0,
+      kilo: c.poids?.[idx] ?? 0,        // ✅ Ajouter poids par article
+      tarifKiloId: c.tarifKiloIds?.[idx] ?? null // ✅ Ajouter l’ID du tarif kilo
     };
   }) ?? [];
 
@@ -42,6 +35,7 @@ function mapCommande(c: any, parametres: any[]) {
     articles,
     articleListe: articles.map((a) => a.article).join(", "),
     serviceListe: articles.map((a) => a.service).join(", "),
+    kiloTotal: articles.reduce((sum, a) => sum + a.kilo, 0), // ✅ Total kilos
     montantNetTotal: articles.reduce((sum, a) => sum + a.montantNet, 0),
   };
 }
@@ -98,7 +92,6 @@ export async function createCommandeAvecPdf(payload: any) {
     throw new Error(text || "Erreur lors de la génération du PDF");
   }
 
-  // ✅ Récupérer le PDF
   const blob = await response.blob();
   return blob;
 }
@@ -120,7 +113,7 @@ export async function getCommandePdf(id: number) {
 // ========================= UPDATE STATUT =========================
 export async function updateStatutCommandeAvecMontant(
   id: number,
-  payload: { montantActuel: number } // le statut sera forcé côté backend à LIVREE
+  payload: { montantActuel: number }
 ) {
   const token = localStorage.getItem("authToken");
 
@@ -138,16 +131,12 @@ export async function updateStatutCommandeAvecMontant(
     throw new Error(`Erreur serveur: ${text || res.statusText}`);
   }
 
-  // Lire la réponse comme PDF
   const pdfBlob = await res.blob();
-
-  // Créer un URL et l’ouvrir dans un nouvel onglet
   const url = window.URL.createObjectURL(pdfBlob);
-  window.open(url, "_blank"); // ouvre directement le PDF
-  // Optionnel : libérer l'URL après un petit délai
+  window.open(url, "_blank");
   setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 
-  return true; // pour indiquer que tout s'est bien passé
+  return true;
 }
 
 // ========================= DELETE =========================

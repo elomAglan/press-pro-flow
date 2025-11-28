@@ -1,12 +1,21 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Plus, Trash2, X, ShoppingCart, Scale, Percent, CreditCard, Loader2 } from "lucide-react";
-import { apiFetch } from "../services/api";
-import { getParametres } from "../services/commande.service";
+import { useNavigate } from "react-router-dom";
+import { getAllClients } from "../services/client.service";
+import { createCommandeAvecPdf } from "../services/commande.service";
+import { getAllTarifPoids } from "../services/tarifPoids.Service";
 
 // ---- TYPES ----
 type Client = { id: string; nom: string; telephone: string };
-type Parametre = { id: number; article: string; service: string; prix: number };
-type ArticlePoids = { id: string; tranchePoids: string; service: string; prix: number; parametreId: number };
+type TarifKilo = { id: number; tranchePoids: string; service: string; prix: number };
+type ArticlePoids = { 
+  id: string; 
+  tarifKiloId: number;
+  tranchePoids: string; 
+  service: string; 
+  prix: number;
+  poids: number;
+};
 type CommandeState = { 
   clientId: string; 
   dateReception: string; 
@@ -14,46 +23,26 @@ type CommandeState = {
   remiseGlobale: number; 
   montantPaye: number; 
 };
-type DraftArticlePoids = { tranchePoids: string; service: string; prix: number };
-
-// ---- CONSTANTS ----
-const WEIGHT_TRANCHES = ["1Kg-4Kg", "5Kg-9Kg", "10Kg-20Kg", "Supérieur à 20Kg"];
-const SERVICES = ["Lavage simple", "Lavage + Séchage", "L+S + Repassage", "Lavage Express"];
-const PRIX_MAP: Record<string, Record<string, number>> = {
-  "1Kg-4Kg": { 
-    "Lavage simple": 700, 
-    "Lavage + Séchage": 800, 
-    "L+S + Repassage": 1000, 
-    "Lavage Express": 1200 
-  },
-  "5Kg-9Kg": { 
-    "Lavage simple": 1200, 
-    "Lavage + Séchage": 1500, 
-    "L+S + Repassage": 2000, 
-    "Lavage Express": 2200 
-  },
-  "10Kg-20Kg": { 
-    "Lavage simple": 2000, 
-    "Lavage + Séchage": 2500, 
-    "L+S + Repassage": 3000, 
-    "Lavage Express": 3500 
-  },
-  "Supérieur à 20Kg": { 
-    "Lavage simple": 3500, 
-    "Lavage + Séchage": 4000, 
-    "L+S + Repassage": 4500, 
-    "Lavage Express": 5000 
-  },
+type DraftArticlePoids = { 
+  tarifKiloId: number;
+  tranchePoids: string; 
+  service: string; 
+  prix: number;
+  poids: number;
 };
 
 // ---- UTILS ----
 const getTodayString = () => new Date().toISOString().slice(0, 10);
 
-const mockClients: Client[] = [
-  { id: "1", nom: "Jean Dupont", telephone: "0123456789" },
-  { id: "2", nom: "Marie Martin", telephone: "0987654321" },
-  { id: "3", nom: "Paul Dubois", telephone: "0555123456" },
-];
+// Retourne la valeur maximale autorisée pour une tranche donnée
+const getMaxWeightForTranche = (tranche: string) => {
+  if (!tranche) return Infinity;
+  if (tranche.includes("1Kg-4Kg")) return 4;
+  if (tranche.includes("5Kg-9Kg")) return 9;
+  if (tranche.includes("10Kg-20Kg")) return 20;
+  if (tranche.includes("Supérieur à 20Kg")) return Infinity;
+  return Infinity;
+};
 
 // ---- UI COMPONENTS ----
 const Card = ({ children, className = "" }: any) => (
@@ -97,6 +86,7 @@ const Button = ({ children, className = "", ...props }: any) => (
 
 // ---- MAIN COMPONENT ----
 export default function CommandePesage() {
+  const navigate = useNavigate();
   const today = getTodayString();
 
   const [commande, setCommande] = useState<CommandeState>({
@@ -108,31 +98,56 @@ export default function CommandePesage() {
   });
 
   const [draftArticlePoids, setDraftArticlePoids] = useState<DraftArticlePoids>({
+    tarifKiloId: 0,
     tranchePoids: "",
     service: "",
     prix: 0,
+    poids: 0,
   });
 
   const [articlesPoids, setArticlesPoids] = useState<ArticlePoids[]>([]);
-  const [clients] = useState<Client[]>(mockClients);
-  const [parametres, setParametres] = useState<Parametre[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [tarifsKilo, setTarifsKilo] = useState<TarifKilo[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
 
-  // Chargement des paramètres
+  // Charger les clients et les tarifs au kilo depuis le backend
   useEffect(() => {
-    getParametres()
-      .then((data: Parametre[]) => setParametres(data))
-      .catch(console.error);
+    const fetchData = async () => {
+      try {
+        setLoadingData(true);
+        const [clientsData, tarifsData] = await Promise.all([
+          getAllClients(),
+          getAllTarifPoids(),
+        ]);
+        setClients(clientsData);
+        setTarifsKilo(tarifsData);
+      } catch (error) {
+        console.error("Erreur lors du chargement des données:", error);
+        alert("❌ Impossible de charger les données nécessaires");
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  // Calcul automatique du prix
-  useEffect(() => {
-    if (draftArticlePoids.tranchePoids && draftArticlePoids.service) {
-      const prix = PRIX_MAP[draftArticlePoids.tranchePoids]?.[draftArticlePoids.service] || 0;
-      setDraftArticlePoids((prev) => ({ ...prev, prix }));
-    }
-  }, [draftArticlePoids.tranchePoids, draftArticlePoids.service]);
+  // Obtenir les tranches de poids uniques disponibles
+  const tranchesDisponibles = useMemo(() => {
+    const tranches = [...new Set(tarifsKilo.map((t) => t.tranchePoids))];
+    return tranches.sort();
+  }, [tarifsKilo]);
 
+  // Filtrer les services disponibles selon la tranche sélectionnée
+  const servicesDisponibles = useMemo(() => {
+    if (!draftArticlePoids.tranchePoids) return [];
+    return tarifsKilo
+      .filter((t) => t.tranchePoids === draftArticlePoids.tranchePoids)
+      .map((t) => ({ service: t.service, id: t.id, prix: t.prix }));
+  }, [draftArticlePoids.tranchePoids, tarifsKilo]);
+
+  // Calcul du montant total (le poids est informatif et n'affecte pas le prix)
   const montantTotal = useMemo(
     () => articlesPoids.reduce((sum, a) => sum + (a.prix ?? 0), 0),
     [articlesPoids]
@@ -148,32 +163,52 @@ export default function CommandePesage() {
     setDraftArticlePoids((prev) => ({ ...prev, ...updates }));
   };
 
+  const handleServiceChange = (serviceValue: string) => {
+    const tarif = servicesDisponibles.find((s) => s.service === serviceValue);
+    if (tarif) {
+      updateDraftArticlePoids({
+        service: tarif.service,
+        tarifKiloId: tarif.id,
+        prix: tarif.prix,
+      });
+    }
+  };
+
   const handleAjouterArticlePoids = () => {
     if (!draftArticlePoids.tranchePoids || !draftArticlePoids.service) {
       alert("⚠️ Veuillez sélectionner une tranche de poids et un service.");
       return;
     }
 
-    // Trouver le paramètre correspondant (tranchePoids = article, service = service)
-    const parametre = parametres.find(
-      (p) => p.article === draftArticlePoids.tranchePoids && p.service === draftArticlePoids.service
-    );
+    if (!draftArticlePoids.poids || draftArticlePoids.poids <= 0) {
+      alert("⚠️ Veuillez saisir un poids valide.");
+      return;
+    }
 
-    if (!parametre) {
-      alert("⚠️ Paramètre introuvable pour cette combinaison tranche/service.");
+    // Vérifier la contrainte de tranche — le poids ne doit pas dépasser la borne supérieure
+    const maxAllowed = getMaxWeightForTranche(draftArticlePoids.tranchePoids);
+    if (Number.isFinite(maxAllowed) && draftArticlePoids.poids > maxAllowed) {
+      alert(`⚠️ Le poids ne doit pas dépasser ${maxAllowed} Kg pour la tranche sélectionnée.`);
       return;
     }
 
     const nouvelArticle: ArticlePoids = {
       id: crypto.randomUUID(),
+      tarifKiloId: draftArticlePoids.tarifKiloId,
       tranchePoids: draftArticlePoids.tranchePoids,
       service: draftArticlePoids.service,
       prix: draftArticlePoids.prix,
-      parametreId: parametre.id,
+      poids: draftArticlePoids.poids,
     };
 
     setArticlesPoids((prev) => [...prev, nouvelArticle]);
-    setDraftArticlePoids({ tranchePoids: "", service: "", prix: 0 });
+    setDraftArticlePoids({ 
+      tarifKiloId: 0,
+      tranchePoids: "", 
+      service: "", 
+      prix: 0, 
+      poids: 0 
+    });
   };
 
   const handleSupprimerArticlePoids = (id: string) => {
@@ -205,57 +240,33 @@ export default function CommandePesage() {
     try {
       setLoading(true);
 
-      // Extraire parametreIds et quantites (chaque article par pesage a une quantité de 1)
-      const parametreIds = articlesPoids.map((a) => a.parametreId);
-      const quantites = articlesPoids.map(() => 1); // Chaque article par pesage = quantité 1
-
-      const body = {
+      // Préparer le payload selon le format backend attendu
+      const payload = {
         clientId: Number(commande.clientId),
-        parametreIds,
-        quantites,
+        tarifKiloIds: articlesPoids.map((a) => a.tarifKiloId),
+        poids: articlesPoids.map((a) => a.poids),
         remiseGlobale: commande.remiseGlobale,
-        montantPaye: commande.montantPaye,
         dateReception: commande.dateReception,
         dateLivraison: commande.dateLivraison,
+        montantPaye: commande.montantPaye,
       };
 
-      console.log("📦 Données envoyées:", JSON.stringify(body, null, 2));
+      console.log("📦 Données envoyées au backend:", JSON.stringify(payload, null, 2));
 
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/commande/pdf`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(body),
-        }
-      );
+      // Appel au backend avec génération du PDF
+      const pdfBlob = await createCommandeAvecPdf(payload);
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Erreur lors de la création de la commande");
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Ouvrir le PDF dans un nouvel onglet
+      const url = window.URL.createObjectURL(pdfBlob);
       window.open(url, "_blank");
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 
       alert("✅ Commande par pesage créée avec succès !");
 
-      // Reset
-      setArticlesPoids([]);
-      setCommande({
-        clientId: "",
-        dateReception: today,
-        dateLivraison: "",
-        remiseGlobale: 0,
-        montantPaye: 0,
-      });
+      // Rediriger vers la liste des commandes
+      navigate("/commandes");
     } catch (err: any) {
+      console.error("Erreur lors de la création:", err);
       alert("❌ " + (err.message || "Erreur lors de la création de la commande"));
     } finally {
       setLoading(false);
@@ -265,19 +276,24 @@ export default function CommandePesage() {
   const handleCancel = () => {
     if (
       articlesPoids.length > 0 &&
-      !confirm("Êtes-vous sûr de vouloir annuler ? Les données seront perdues.")
+      !window.confirm("Êtes-vous sûr de vouloir annuler ? Les données seront perdues.")
     ) {
       return;
     }
-    setArticlesPoids([]);
-    setCommande({
-      clientId: "",
-      dateReception: today,
-      dateLivraison: "",
-      remiseGlobale: 0,
-      montantPaye: 0,
-    });
+    navigate("/commandes");
   };
+
+  // Afficher un loader pendant le chargement des données
+  if (loadingData) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin mx-auto mb-4 text-blue-600" size={48} />
+          <p className="text-gray-600 dark:text-gray-400">Chargement des données...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
@@ -343,17 +359,22 @@ export default function CommandePesage() {
             Ajouter par tranche de poids
           </h2>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-4 gap-4">
             <div>
               <Label>Tranche de poids *</Label>
               <Select
                 value={draftArticlePoids.tranchePoids}
                 onChange={(v) =>
-                  updateDraftArticlePoids({ tranchePoids: v, service: "", prix: 0 })
+                  updateDraftArticlePoids({ 
+                    tranchePoids: v, 
+                    service: "", 
+                    prix: 0,
+                    tarifKiloId: 0 
+                  })
                 }
               >
                 <option value="">Choisir une tranche...</option>
-                {WEIGHT_TRANCHES.map((t) => (
+                {tranchesDisponibles.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
@@ -365,36 +386,64 @@ export default function CommandePesage() {
               <Label>Service *</Label>
               <Select
                 value={draftArticlePoids.service}
-                onChange={(v) => updateDraftArticlePoids({ service: v })}
+                onChange={handleServiceChange}
                 disabled={!draftArticlePoids.tranchePoids}
               >
                 <option value="">Choisir un service...</option>
-                {SERVICES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
+                {servicesDisponibles.map((s) => (
+                  <option key={s.id} value={s.service}>
+                    {s.service}
                   </option>
                 ))}
               </Select>
+            </div>
+
+            <div>
+              <Label>Poids (Kg) *</Label>
+              <Input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={draftArticlePoids.poids || ""}
+                max={
+                  Number.isFinite(getMaxWeightForTranche(draftArticlePoids.tranchePoids))
+                    ? getMaxWeightForTranche(draftArticlePoids.tranchePoids)
+                    : undefined
+                }
+                onChange={(e) => {
+                  const raw = parseFloat(e.target.value) || 0;
+                  const max = getMaxWeightForTranche(draftArticlePoids.tranchePoids);
+                  if (Number.isFinite(max) && raw > max) {
+                    updateDraftArticlePoids({ poids: max });
+                    alert(`⚠️ Le poids ne doit pas dépasser ${max} Kg pour la tranche sélectionnée.`);
+                  } else {
+                    updateDraftArticlePoids({ poids: raw });
+                  }
+                }}
+                placeholder="Ex: 2.5"
+              />
             </div>
 
             <Button
               className="bg-green-600 hover:bg-green-700 mt-6"
               onClick={handleAjouterArticlePoids}
               disabled={
-                !draftArticlePoids.tranchePoids || !draftArticlePoids.service
+                !draftArticlePoids.tranchePoids || 
+                !draftArticlePoids.service || 
+                !draftArticlePoids.poids
               }
             >
               <Plus size={16} /> Ajouter
             </Button>
           </div>
 
-          {draftArticlePoids.prix > 0 && (
+          {draftArticlePoids.prix > 0 && draftArticlePoids.poids > 0 && (
             <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
               <div className="text-sm text-gray-700 dark:text-gray-300">
-                Prix calculé :{" "}
-                <strong className="text-xl text-blue-600 dark:text-blue-400">
-                  {draftArticlePoids.prix.toLocaleString()} FCFA
-                </strong>
+                Prix unitaire : <strong>{draftArticlePoids.prix.toLocaleString()} FCFA</strong>
+                {" • "}
+                Poids (info) : <strong>{draftArticlePoids.poids} Kg</strong>
+                <div className="text-xs text-gray-500 mt-1">Le poids est informatif et n'affecte pas le prix.</div>
               </div>
             </div>
           )}
@@ -413,7 +462,7 @@ export default function CommandePesage() {
                 Aucun article ajouté pour le moment
               </p>
               <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                Sélectionnez une tranche de poids et un service pour commencer
+                Sélectionnez une tranche de poids, un service et saisissez le poids
               </p>
             </div>
           ) : (
@@ -435,13 +484,13 @@ export default function CommandePesage() {
                         </p>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-300 ml-8">
-                        {a.service}
+                        {a.service} • {a.poids} Kg • Prix : {a.prix.toLocaleString()} FCFA
                       </p>
                     </div>
 
                     <div className="flex items-center gap-3">
                       <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                        {a.prix?.toLocaleString() ?? 0} FCFA
+                        {a.prix.toLocaleString()} FCFA
                       </span>
                       <button
                         onClick={() => handleSupprimerArticlePoids(a.id)}
