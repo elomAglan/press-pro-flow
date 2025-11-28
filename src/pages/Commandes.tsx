@@ -12,8 +12,20 @@ import { List, Plus, Search, Calendar, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// ✅ Définition type Commande
+interface Commande {
+  id: number;
+  clientNom: string;
+  articles?: string[]; // ici ce sont juste des noms d’articles
+  montantsNets?: number[];
+  montantNetTotal?: number;
+  dateReception?: string;
+  dateLivraison?: string;
+  statut?: string;
+}
+
 export default function Commandes() {
-  const [commandes, setCommandes] = useState<any[]>([]);
+  const [commandes, setCommandes] = useState<Commande[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -23,7 +35,13 @@ export default function Commandes() {
     async function load() {
       try {
         const data = await getAllCommandes();
-        setCommandes(data.sort((a, b) => b.id - a.id));
+        // Calcul automatique du montant net total si non fourni
+        const dataWithTotals = data.map((c: any) => ({
+          ...c,
+          montantNetTotal:
+            c.montantsNets?.reduce((sum: number, m: number) => sum + m, 0) ?? 0,
+        }));
+        setCommandes(dataWithTotals.sort((a: any, b: any) => b.id - a.id));
       } catch (err) {
         console.error("Erreur récupération commandes:", err);
       }
@@ -51,9 +69,15 @@ export default function Commandes() {
     doc.setFontSize(12);
     doc.text(`Exporté le : ${new Date().toLocaleString()}`, 14, 28);
 
-    if (filterDate) doc.text(`Date filtrée : ${filterDate}`, 14, 36);
-    if (filterStatus)
-      doc.text(`Statut filtré : ${filterStatus}`, 14, filterDate ? 44 : 36);
+    let yOffset = 36;
+    if (filterDate) {
+      doc.text(`Date filtrée : ${filterDate}`, 14, yOffset);
+      yOffset += 8;
+    }
+    if (filterStatus) {
+      doc.text(`Statut filtré : ${filterStatus}`, 14, yOffset);
+      yOffset += 8;
+    }
 
     const tableColumn = [
       "ID",
@@ -67,8 +91,8 @@ export default function Commandes() {
     const tableRows = filtered.map((c) => [
       c.id,
       c.clientNom ?? "",
-      c.articles?.reduce((sum: number, a: any) => sum + a.qte, 0) ?? 0,
-      c.montantNetTotal != null ? String(c.montantNetTotal) : "0",
+      c.articles?.length ?? 0, // ✅ Correction quantité
+      c.montantNetTotal?.toLocaleString("fr-FR") ?? "0",
       c.dateLivraison ?? "",
       c.statut ?? "",
     ]);
@@ -76,7 +100,7 @@ export default function Commandes() {
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: filterDate || filterStatus ? 50 : 36,
+      startY: yOffset,
       styles: { fontSize: 10 },
     });
 
@@ -137,6 +161,7 @@ export default function Commandes() {
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
           className="w-40 rounded-md border dark:bg-gray-700 dark:text-gray-100 px-3"
+          title="Filtrer par statut"
         >
           <option value="">Tous les statuts</option>
           {uniqueStatuses.map((s) => (
@@ -171,13 +196,9 @@ export default function Commandes() {
                   >
                     <td className="px-4 py-2">{c.id}</td>
                     <td className="px-4 py-2">{c.clientNom ?? ""}</td>
-                    <td className="px-4 py-2">
-                      {c.articles?.reduce((sum: number, a: any) => sum + a.qte, 0) ?? 0}
-                    </td>
+                    <td className="px-4 py-2">{c.articles?.length ?? 0}</td>
                     <td className="px-4 py-2 text-right">
-                      {c.montantNetTotal != null
-                        ? c.montantNetTotal.toLocaleString("fr-FR")
-                        : "0"}
+                      {c.montantNetTotal?.toLocaleString("fr-FR") ?? "0"}
                     </td>
                     <td className="px-4 py-2">{c.dateLivraison ?? ""}</td>
                     <td className="px-4 py-2">

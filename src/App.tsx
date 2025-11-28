@@ -18,7 +18,9 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import Tarifs from "./pages/Tarifs";
+import TarifsKilo from "./pages/TarifsKilo";
 import ChargePage from "./pages/ChargePage";
+import CommandePesage from "./pages/Commande-pesage"; // <-- Import ajouté
 
 const queryClient = new QueryClient();
 
@@ -50,9 +52,11 @@ const App: React.FC = () => (
           <Route path="/commandes" element={withLayout(<Commandes />)} />
           <Route path="/commandes/nouvelle" element={withLayout(<NouvelleCommandeWrapper />)} />
           <Route path="/commandes/:id" element={withLayout(<CommandeDetail />)} />
+          <Route path="/commande-pesage" element={withLayout(<CommandePesage />)} />
           <Route path="/charge" element={withLayout(<ChargePage />)} />
           <Route path="/parametres" element={withLayout(<Parametres />)} />
           <Route path="/tarifs" element={withLayout(<Tarifs />)} />
+          <Route path="/tarifs-kilo" element={withLayout(<TarifsKilo />)} />
           <Route path="/rapports" element={withLayout(<Rapports />)} />
           <Route path="/compte" element={withLayout(<Compte />)} />
 

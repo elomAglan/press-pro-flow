@@ -217,7 +217,7 @@ export default function NouvelleCommande({ onCancel }: any) {
       const body = {
         clientId: Number(commande.clientId),
         parametreIds: articles.map((a) => a.parametreId),
-        qtes: articles.map((a) => a.quantite),
+        quantites: articles.map((a) => a.quantite),
         remiseGlobale: commande.remiseGlobale,
         montantPaye: commande.montantPaye,
         dateReception: commande.dateReception,
@@ -258,18 +258,27 @@ export default function NouvelleCommande({ onCancel }: any) {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-extrabold flex items-center gap-2">
-          <ShoppingCart className="text-blue-600" /> Nouvelle commande
-        </h1>
+<div className="flex justify-between items-center">
+  <h1 className="text-2xl font-extrabold flex items-center gap-2">
+    <ShoppingCart className="text-blue-600" /> Nouvelle commande
+  </h1>
 
-        <Button
-          className="bg-red-600 hover:bg-red-700"
-          onClick={() => navigate("/commandes")}
-        >
-          <X size={18} /> Annuler
-        </Button>
-      </div>
+  <div className="flex gap-2">
+    <Button
+      className="bg-gray-600 hover:bg-gray-700"
+      onClick={() => navigate("/commande-pesage")}
+    >
+      🏋️‍♂️ Commande par pesage
+    </Button>
+
+    <Button
+      className="bg-red-600 hover:bg-red-700"
+      onClick={() => navigate("/commandes")}
+    >
+      <X size={18} /> Annuler
+    </Button>
+  </div>
+</div>
 
       {/* CLIENT ET DATES */}
       <Card className="space-y-5">

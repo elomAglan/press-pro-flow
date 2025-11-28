@@ -31,7 +31,7 @@ function mapCommande(c: any, parametres: any[]) {
         param?.type ??
         param?.nom ??
         "Inconnu",
-      qte: c.qtes?.[idx] ?? 0,
+      qte: c.quantites?.[idx] ?? c.qtes?.[idx] ?? 0,
       montantBrut: c.montantsBruts?.[idx] ?? 0,
       montantNet: c.montantsNets?.[idx] ?? 0,
     };

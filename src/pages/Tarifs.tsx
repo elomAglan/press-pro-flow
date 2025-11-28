@@ -51,40 +51,40 @@ const TarifFormModal: React.FC<TarifFormModalProps> = ({ tarifToEdit, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             {isEditing ? `Modifier : ${tarifToEdit?.article}` : "Ajouter un nouveau tarif"}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1">
             <X size={24} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="article" className="block text-sm font-medium text-gray-700">Type d'article</label>
+            <label htmlFor="article" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Type d'article</label>
             <input
               type="text"
               id="article"
               name="article"
               value={formData.article}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
               placeholder="Ex: Chemise en coton"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="service" className="block text-sm font-medium text-gray-700">Service</label>
+            <label htmlFor="service" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Service</label>
             <select
               id="service"
               name="service"
               value={formData.service}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border bg-white appearance-none pr-8"
+              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border appearance-none pr-8"
               required
             >
               <option value="" disabled>Sélectionner un service</option>
@@ -95,14 +95,14 @@ const TarifFormModal: React.FC<TarifFormModalProps> = ({ tarifToEdit, onClose, o
           </div>
 
           <div>
-            <label htmlFor="prix" className="block text-sm font-medium text-gray-700">Prix (CFA)</label>
+            <label htmlFor="prix" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Prix (CFA)</label>
             <input
               type="number"
               id="prix"
               name="prix"
               value={formData.prix || ''}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
               placeholder="Ex: 5000"
               step="1"
               required
@@ -113,7 +113,7 @@ const TarifFormModal: React.FC<TarifFormModalProps> = ({ tarifToEdit, onClose, o
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition"
             >
               Annuler
             </button>
@@ -195,23 +195,23 @@ export default function Tarifs() {
   const handleGoBack = () => navigate(-1);
 
   return (
-    <div className="min-h-screen bg-white p-6">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={handleGoBack}
-              className="p-3 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-full transition shadow-sm"
+              className="p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full transition shadow-sm"
               title="Retour"
             >
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <Tag size={28} className="text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <Tag size={28} className="text-blue-600 dark:text-blue-400" />
                 Gestion des Tarifs
               </h1>
-              <p className="text-gray-500 mt-1">Définissez et ajustez les prix des services de votre pressing.</p>
+              <p className="text-gray-500 dark:text-gray-400 mt-1">Définissez et ajustez les prix des services de votre pressing.</p>
             </div>
           </div>
 
@@ -223,28 +223,35 @@ export default function Tarifs() {
               <Plus size={20} /> Ajouter un Tarif
             </button>
           )}
+
+           <button
+    onClick={() => navigate('/tarifs-kilo')}
+    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition shadow-md"
+  >
+    <Tag size={20} /> Tarifs par Kilo
+  </button>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Article</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix (CFA)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Article</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Prix (CFA)</th>
               </tr>
             </thead>
 
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {tarifs.map(tarif => (
-                <tr key={tarif.id} className="hover:bg-blue-50 transition duration-150">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{tarif.article}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{tarif.service}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">
+                <tr key={tarif.id} className="hover:bg-blue-50 dark:hover:bg-gray-700 transition duration-150">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">{tarif.article}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{tarif.service}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-semibold">
                     <div className="flex items-center justify-between gap-2">
                       {/* Prix */}
                       <div className="flex items-center gap-1">
-                        <DollarSign size={14} className="text-green-600"/>
+                        <DollarSign size={14} className="text-green-600 dark:text-green-400"/>
                         {tarif.prix.toFixed(0)} CFA
                       </div>
 
@@ -253,14 +260,14 @@ export default function Tarifs() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleEdit(tarif)}
-                            className="text-indigo-600 hover:text-indigo-900 p-1 rounded-full hover:bg-indigo-100 transition"
+                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 p-1 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900 transition"
                             title="Modifier"
                           >
                             <Pencil size={16} />
                           </button>
                           <button
                             onClick={() => handleDelete(tarif.id)}
-                            className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100 transition"
+                            className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition"
                             title="Supprimer"
                           >
                             <Trash2 size={16} />
@@ -275,7 +282,7 @@ export default function Tarifs() {
           </table>
 
           {tarifs.length === 0 && (
-            <div className="p-6 text-center text-gray-500">
+            <div className="p-6 text-center text-gray-500 dark:text-gray-400">
               <p className="font-medium">Aucun tarif défini.</p>
               {isAdmin && <p className="text-sm">Cliquez sur "Ajouter un Tarif" pour commencer.</p>}
             </div>
