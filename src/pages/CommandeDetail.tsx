@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, CheckCircle, AlertCircle, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle, AlertCircle, Scale, Shirt } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -60,35 +60,40 @@ export default function CommandeDetail() {
   const resteAPayer = Number(commande?.montantNetTotal ?? 0) - Number(commande?.montantPaye ?? 0);
   const montantValide = montantActuel === "" || Number(montantActuel) <= resteAPayer;
 
-  // ================= PAIEMENT & STATUT =================
-async function handleValiderPaiement() {
-  if (!commande || !montantValide) return;
+  // 🔍 Détection du type de commande (après le chargement)
+  const estCommandePesage = commande?.articles?.some((a: any) => a.tranchePoids !== null && a.tranchePoids !== undefined);
 
-  try {
-    const payload = {
-      montantActuel: Number(montantActuel || 0),
-      // le statut sera forcé à LIVREE côté backend
-    };
-
-    // 1️⃣ Mettre à jour le statut/paiement et générer le PDF
-    await updateStatutCommandeAvecMontant(commande.id, payload);
-
-    // 2️⃣ Recharger la commande pour mettre à jour l'affichage
-    const data = await getCommandeById(commande.id);
-    setCommande(data);
-
-    if (data.clientId) {
-      const updatedClient = await getClientById(data.clientId);
-      setClient(updatedClient);
-    }
-
-    setMontantActuel("");
-    setShowModal(false);
-  } catch (err) {
-    console.error(err);
-    alert("Erreur lors de la mise à jour du paiement/statut");
+  // 🐛 Debug direct sans useEffect
+  if (commande?.articles && commande.articles.length > 0) {
+    console.log("📦 Premier article:", commande.articles[0]);
   }
-}
+
+  // ================= PAIEMENT & STATUT =================
+  async function handleValiderPaiement() {
+    if (!commande || !montantValide) return;
+
+    try {
+      const payload = {
+        montantActuel: Number(montantActuel || 0),
+      };
+
+      await updateStatutCommandeAvecMontant(commande.id, payload);
+
+      const data = await getCommandeById(commande.id);
+      setCommande(data);
+
+      if (data.clientId) {
+        const updatedClient = await getClientById(data.clientId);
+        setClient(updatedClient);
+      }
+
+      setMontantActuel("");
+      setShowModal(false);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la mise à jour du paiement/statut");
+    }
+  }
 
   // ================= PDF =================
   async function handleDownloadPdf() {
@@ -115,8 +120,6 @@ async function handleValiderPaiement() {
           >
             <ArrowLeft size={20} /> Retour
           </button>
-
-
         </div>
 
         <Button
@@ -129,7 +132,18 @@ async function handleValiderPaiement() {
 
       {/* TITRE */}
       <div>
-        <h1 className="text-3xl font-bold dark:text-gray-100">Commande #{commande.id}</h1>
+        <h1 className="text-3xl font-bold dark:text-gray-100 flex items-center gap-3">
+          Commande #{commande.id}
+          {estCommandePesage ? (
+            <Badge className="bg-purple-600 text-white flex items-center gap-1">
+              <Scale size={14} /> Par pesage
+            </Badge>
+          ) : (
+            <Badge className="bg-blue-600 text-white flex items-center gap-1">
+              <Shirt size={14} /> Standard
+            </Badge>
+          )}
+        </h1>
         <p className="text-gray-600 mt-1 dark:text-gray-300">
           Réception : <b>{commande.dateReception}</b> — Livraison : <b>{commande.dateLivraison}</b>
         </p>
@@ -146,33 +160,85 @@ async function handleValiderPaiement() {
         </Card>
 
         <Card className="p-6 shadow-sm border-l-4 border-green-600 dark:bg-gray-800">
-          <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">Articles & Services</h2>
-          <div className="space-y-2 text-sm">
-            {commande.articles?.map((a: any) => (
-              <p key={a.id}>
-                <b>{a.article} / {a.service}</b> : {a.qte} {a.kilo ? `kg` : "pcs"}
-              </p>
-            ))}
+          <h2 className="text-xl font-semibold mb-4 dark:text-gray-100 flex items-center gap-2">
+            {estCommandePesage ? <Scale size={20} className="text-purple-600" /> : <Shirt size={20} className="text-blue-600" />}
+            Articles & Services
+          </h2>
+          <div className="space-y-3">
+            {commande.articles?.map((a: any, index: number) => {
+              // 🐛 Détection intelligente des champs disponibles
+              const tranchePoids = a.tranchePoids || a.tranche_poids || null;
+              const service = a.service || "Service non spécifié";
+              const article = a.article || "Article non spécifié";
+              
+              // 🔍 Détection : si `kilo` existe et est un nombre > 0, c'est du pesage
+              const estPesage = (a.kilo !== null && a.kilo !== undefined && a.kilo > 0) || tranchePoids !== null;
+              const quantite = estPesage ? (a.kilo || a.poids || a.qte || 0) : (a.qte || 0);
+
+              return (
+                <div 
+                  key={a.id || index} 
+                  className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                >
+                  {estPesage ? (
+                    // 🏋️‍♂️ Affichage pour commande par pesage
+                    <>
+                      <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Scale size={16} className="text-purple-600" />
+                        {tranchePoids || "Tranche de poids"}
+                      </p>
+
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        <b>Poids :</b> {quantite} kg
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        <b>Prix :</b> {(a.montantBrut || 0).toLocaleString()} FCFA
+                      </p>
+                    </>
+                  ) : (
+                    // 👕 Affichage pour commande standard
+                    <>
+                      <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Shirt size={16} className="text-blue-600" />
+                        {article} / {service}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                        <b>Quantité :</b> {quantite} pcs
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        <b>Montant :</b> {(a.montantBrut || 0).toLocaleString()} FCFA
+                      </p>
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
 
         {/* MONTANTS */}
-        <Card className="p-6 shadow-sm bg-gray-50 border dark:bg-gray-800">
+        <Card className="p-6 shadow-sm bg-gray-50 border dark:bg-gray-800 md:col-span-2">
           <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">Montants</h2>
-          <div className="space-y-2 text-sm">
-            <p><b>Montant brut :</b> {commande.articles?.reduce((sum: number, a: any) => sum + a.montantBrut, 0).toLocaleString()} FCFA</p>
-            <p><b>Remise :</b> {commande.remiseGlobale?.toLocaleString() ?? 0} FCFA</p>
-            <p><b>Net :</b> {commande.montantNetTotal?.toLocaleString() ?? 0} FCFA</p>
-            <p><b>Payé :</b> {Number(commande.montantPaye ?? 0).toLocaleString()} FCFA</p>
-            <p className={`font-bold ${resteAPayer === 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-              Reste à payer : {resteAPayer.toLocaleString()} FCFA
-            </p>
-            <p>
-              <b>Statut paiement :</b>{" "}
-              <Badge className={`px-3 py-1 text-white ${commande.statutPaiement === "Payé" ? "bg-green-600 dark:bg-green-700" : commande.statutPaiement === "Partiel" ? "bg-orange-500 dark:bg-orange-600" : "bg-red-500 dark:bg-red-600"}`}>
-                {commande.statutPaiement}
-              </Badge>
-            </p>
+          <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div className="space-y-2">
+              <p><b>Montant brut :</b> {commande.articles?.reduce((sum: number, a: any) => sum + a.montantBrut, 0).toLocaleString()} FCFA</p>
+              <p><b>Remise :</b> {commande.remiseGlobale?.toLocaleString() ?? 0} FCFA</p>
+              <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                <b>Net :</b> {commande.montantNetTotal?.toLocaleString() ?? 0} FCFA
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p><b>Payé :</b> {Number(commande.montantPaye ?? 0).toLocaleString()} FCFA</p>
+              <p className={`font-bold text-lg ${resteAPayer === 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                Reste à payer : {resteAPayer.toLocaleString()} FCFA
+              </p>
+              <p className="flex items-center gap-2">
+                <b>Statut paiement :</b>
+                <Badge className={`px-3 py-1 text-white ${commande.statutPaiement === "Payé" ? "bg-green-600 dark:bg-green-700" : commande.statutPaiement === "Partiel" ? "bg-orange-500 dark:bg-orange-600" : "bg-red-500 dark:bg-red-600"}`}>
+                  {commande.statutPaiement}
+                </Badge>
+              </p>
+            </div>
           </div>
         </Card>
       </div>
