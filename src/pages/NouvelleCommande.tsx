@@ -211,6 +211,16 @@ export default function NouvelleCommande({ onCancel }: any) {
       return;
     }
 
+    if (commande.remiseGlobale > montantTotal) {
+      alert("⚠️ La remise ne peut pas dépasser le montant total de la commande.");
+      return;
+    }
+
+    if (commande.montantPaye > montantNet) {
+      alert("⚠️ Le montant payé ne peut pas dépasser le total net de la commande.");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -258,27 +268,27 @@ export default function NouvelleCommande({ onCancel }: any) {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       {/* HEADER */}
-<div className="flex justify-between items-center">
-  <h1 className="text-2xl font-extrabold flex items-center gap-2">
-    <ShoppingCart className="text-blue-600" /> Nouvelle commande
-  </h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-extrabold flex items-center gap-2">
+          <ShoppingCart className="text-blue-600" /> Nouvelle commande
+        </h1>
 
-  <div className="flex gap-2">
-    <Button
-      className="bg-gray-600 hover:bg-gray-700"
-      onClick={() => navigate("/commande-pesage")}
-    >
-      🏋️‍♂️ Commande par pesage
-    </Button>
+        <div className="flex gap-2">
+          <Button
+            className="bg-gray-600 hover:bg-gray-700"
+            onClick={() => navigate("/commande-pesage")}
+          >
+            🏋️‍♂️ Commande par pesage
+          </Button>
 
-    <Button
-      className="bg-red-600 hover:bg-red-700"
-      onClick={() => navigate("/commandes")}
-    >
-      <X size={18} /> Annuler
-    </Button>
-  </div>
-</div>
+          <Button
+            className="bg-red-600 hover:bg-red-700"
+            onClick={() => navigate("/commandes")}
+          >
+            <X size={18} /> Annuler
+          </Button>
+        </div>
+      </div>
 
       {/* CLIENT ET DATES */}
       <Card className="space-y-5">
@@ -429,15 +439,16 @@ export default function NouvelleCommande({ onCancel }: any) {
             <div className="space-y-1">
               <Label>
                 <div className="flex items-center gap-2">
-                  <Percent size={16} /> Remise
+                  <Percent size={16} /> Remise (max: {montantTotal.toLocaleString()} FCFA)
                 </div>
               </Label>
               <Input
                 type="number"
                 min={0}
+                max={montantTotal}
                 value={commande.remiseGlobale}
                 onChange={(e) =>
-                  updateCommande({ remiseGlobale: +e.target.value })
+                  updateCommande({ remiseGlobale: Math.min(+e.target.value, montantTotal) })
                 }
               />
             </div>
@@ -450,15 +461,16 @@ export default function NouvelleCommande({ onCancel }: any) {
             <div className="space-y-1 mt-3">
               <Label>
                 <div className="flex items-center gap-2">
-                  <CreditCard size={16} /> Montant payé
+                  <CreditCard size={16} /> Montant payé (max: {montantNet.toLocaleString()} FCFA)
                 </div>
               </Label>
               <Input
                 type="number"
                 min={0}
+                max={montantNet}
                 value={commande.montantPaye}
                 onChange={(e) =>
-                  updateCommande({ montantPaye: +e.target.value })
+                  updateCommande({ montantPaye: Math.min(+e.target.value, montantNet) })
                 }
               />
             </div>

@@ -237,6 +237,16 @@ export default function CommandePesage() {
       return;
     }
 
+    if (commande.remiseGlobale > montantTotal) {
+      alert("⚠️ La remise ne peut pas dépasser le montant total de la commande.");
+      return;
+    }
+
+    if (commande.montantPaye > montantNet) {
+      alert("⚠️ Le montant payé ne peut pas dépasser le total net de la commande.");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -514,7 +524,7 @@ export default function CommandePesage() {
                 <div className="space-y-1">
                   <Label>
                     <div className="flex items-center gap-2">
-                      <Percent size={16} /> Remise (optionnelle)
+                      <Percent size={16} /> Remise (max: {montantTotal.toLocaleString()} FCFA)
                     </div>
                   </Label>
                   <Input
@@ -523,7 +533,7 @@ export default function CommandePesage() {
                     max={montantTotal}
                     value={commande.remiseGlobale}
                     onChange={(e) =>
-                      updateCommande({ remiseGlobale: +e.target.value })
+                      updateCommande({ remiseGlobale: Math.min(+e.target.value, montantTotal) })
                     }
                     placeholder="0"
                   />
@@ -537,7 +547,7 @@ export default function CommandePesage() {
                 <div className="space-y-1 mt-3">
                   <Label>
                     <div className="flex items-center gap-2">
-                      <CreditCard size={16} /> Montant payé
+                      <CreditCard size={16} /> Montant payé (max: {montantNet.toLocaleString()} FCFA)
                     </div>
                   </Label>
                   <Input
@@ -546,7 +556,7 @@ export default function CommandePesage() {
                     max={montantNet}
                     value={commande.montantPaye}
                     onChange={(e) =>
-                      updateCommande({ montantPaye: +e.target.value })
+                      updateCommande({ montantPaye: Math.min(+e.target.value, montantNet) })
                     }
                     placeholder="0"
                   />

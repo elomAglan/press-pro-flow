@@ -252,19 +252,28 @@ export default function CommandeDetail() {
 
           <div className="space-y-4 mt-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Montant payé</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                Montant payé (max: {resteAPayer.toLocaleString()} FCFA)
+              </label>
               <Input
                 type="number"
                 placeholder="Montant payé..."
                 value={montantActuel}
                 min={0}
                 max={resteAPayer}
-                onChange={(e) => setMontantActuel(e.target.value)}
+                onChange={(e) => {
+                  const valeur = Number(e.target.value);
+                  if (valeur <= resteAPayer) {
+                    setMontantActuel(e.target.value);
+                  } else {
+                    setMontantActuel(resteAPayer.toString());
+                  }
+                }}
                 className="dark:bg-gray-700 dark:text-white"
               />
               {!montantValide && (
                 <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                  <AlertCircle size={14} /> Montant invalide
+                  <AlertCircle size={14} /> Le montant payé ne peut pas dépasser le reste à payer
                 </p>
               )}
             </div>
