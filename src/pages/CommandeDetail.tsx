@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, CheckCircle, AlertCircle, Scale, Shirt } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle, AlertCircle, Scale, Shirt, Trash2 } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -8,12 +8,15 @@ import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-import { getCommandeById, updateStatutCommandeAvecMontant, getCommandePdf } from "../services/commande.service";
+import { getCommandeById, updateStatutCommandeAvecMontant, getCommandePdf, deleteCommande } from "../services/commande.service";
 import { getClientById } from "../services/client.service";
 
 export default function CommandeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  const storedRole = localStorage.getItem("role") || "";
+  const isAdmin = storedRole?.toString().toUpperCase() === "ADMIN";
 
   const [commande, setCommande] = useState<any | null>(null);
   const [client, setClient] = useState<any | null>(null);
@@ -21,6 +24,7 @@ export default function CommandeDetail() {
   const [showModal, setShowModal] = useState(false);
   const [montantActuel, setMontantActuel] = useState("");
   const [nouveauStatut, setNouveauStatut] = useState<"EN_COURS" | "LIVREE">("EN_COURS");
+  const [showMontantWarning, setShowMontantWarning] = useState(false);
 
   // Charger la commande et le client
   useEffect(() => {
@@ -89,6 +93,7 @@ export default function CommandeDetail() {
 
       setMontantActuel("");
       setShowModal(false);
+      setShowMontantWarning(false);
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la mise à jour du paiement/statut");
@@ -109,6 +114,23 @@ export default function CommandeDetail() {
     }
   }
 
+  // ================= SUPPRESSION =================
+  async function handleSupprimerCommande() {
+    if (!commande) return;
+
+    const confirmed = window.confirm(`Confirmer la suppression de la commande #${commande.id} ?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteCommande(commande.id);
+      alert("La commande a été supprimée.");
+      navigate("/commandes");
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la suppression de la commande.");
+    }
+  }
+
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8 dark:bg-gray-900 dark:text-gray-100">
       {/* HEADER */}
@@ -122,12 +144,23 @@ export default function CommandeDetail() {
           </button>
         </div>
 
-        <Button
-          className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white flex items-center gap-2"
-          onClick={() => setShowModal(true)}
-        >
-          <CheckCircle className="h-4 w-4 mr-2" /> Mettre à jour le paiement/statut
-        </Button>
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <Button
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white flex items-center gap-2"
+              onClick={handleSupprimerCommande}
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+            </Button>
+          )}
+
+          <Button
+            className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white flex items-center gap-2"
+            onClick={() => setShowModal(true)}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" /> Mettre à jour le paiement/statut
+          </Button>
+        </div>
       </div>
 
       {/* TITRE */}
@@ -260,21 +293,28 @@ export default function CommandeDetail() {
                 placeholder="Montant payé..."
                 value={montantActuel}
                 min={0}
-                max={resteAPayer}
                 onChange={(e) => {
                   const valeur = Number(e.target.value);
-                  if (valeur <= resteAPayer) {
-                    setMontantActuel(e.target.value);
-                  } else {
+                  if (valeur > resteAPayer) {
+                    setShowMontantWarning(true);
                     setMontantActuel(resteAPayer.toString());
+                    setTimeout(() => setShowMontantWarning(false), 3000);
+                  } else {
+                    setShowMontantWarning(false);
+                    setMontantActuel(e.target.value);
                   }
                 }}
                 className="dark:bg-gray-700 dark:text-white"
               />
-              {!montantValide && (
-                <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                  <AlertCircle size={14} /> Le montant payé ne peut pas dépasser le reste à payer
-                </p>
+              {showMontantWarning && (
+                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
+                  <span className="text-lg">⚠️</span>
+                  <span>
+                    Le montant payé ne peut pas dépasser le reste à payer. 
+                    <br />
+                    <strong>Montant ajusté à : {resteAPayer.toLocaleString()} FCFA</strong>
+                  </span>
+                </div>
               )}
             </div>
 

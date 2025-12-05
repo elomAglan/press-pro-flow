@@ -107,6 +107,7 @@ export default function NouvelleCommande({ onCancel }: any) {
   const [clients, setClients] = useState<Client[]>([]);
   const [tarifs, setTarifs] = useState<Parametre[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showMontantWarning, setShowMontantWarning] = useState(false);
 
   // Chargement initial
   useEffect(() => {
@@ -467,12 +468,29 @@ export default function NouvelleCommande({ onCancel }: any) {
               <Input
                 type="number"
                 min={0}
-                max={montantNet}
                 value={commande.montantPaye}
-                onChange={(e) =>
-                  updateCommande({ montantPaye: Math.min(+e.target.value, montantNet) })
-                }
+                onChange={(e) => {
+                  const value = +e.target.value;
+                  if (value > montantNet) {
+                    setShowMontantWarning(true);
+                    updateCommande({ montantPaye: montantNet });
+                    setTimeout(() => setShowMontantWarning(false), 3000);
+                  } else {
+                    setShowMontantWarning(false);
+                    updateCommande({ montantPaye: value });
+                  }
+                }}
               />
+              {showMontantWarning && (
+                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
+                  <span className="text-lg">⚠️</span>
+                  <span>
+                    Le montant payé ne peut pas dépasser le total net à payer. 
+                    <br />
+                    <strong>Montant ajusté à : {montantNet.toLocaleString()} FCFA</strong>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}

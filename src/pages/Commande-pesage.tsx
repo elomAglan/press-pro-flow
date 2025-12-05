@@ -110,6 +110,8 @@ export default function CommandePesage() {
   const [tarifsKilo, setTarifsKilo] = useState<TarifKilo[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [showMontantWarning, setShowMontantWarning] = useState(false);
+  const [showRemiseWarning, setShowRemiseWarning] = useState(false);
 
   // Charger les clients et les tarifs au kilo depuis le backend
   useEffect(() => {
@@ -530,13 +532,30 @@ export default function CommandePesage() {
                   <Input
                     type="number"
                     min={0}
-                    max={montantTotal}
                     value={commande.remiseGlobale}
-                    onChange={(e) =>
-                      updateCommande({ remiseGlobale: Math.min(+e.target.value, montantTotal) })
-                    }
+                    onChange={(e) => {
+                      const value = +e.target.value;
+                      if (value > montantTotal) {
+                        setShowRemiseWarning(true);
+                        updateCommande({ remiseGlobale: montantTotal });
+                        setTimeout(() => setShowRemiseWarning(false), 3000);
+                      } else {
+                        setShowRemiseWarning(false);
+                        updateCommande({ remiseGlobale: value });
+                      }
+                    }}
                     placeholder="0"
                   />
+                  {showRemiseWarning && (
+                    <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
+                      <span className="text-lg">⚠️</span>
+                      <span>
+                        La remise ne peut pas dépasser le total brut. 
+                        <br />
+                        <strong>Remise ajustée à : {montantTotal.toLocaleString()} FCFA</strong>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-between font-bold text-2xl text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
@@ -553,13 +572,30 @@ export default function CommandePesage() {
                   <Input
                     type="number"
                     min={0}
-                    max={montantNet}
                     value={commande.montantPaye}
-                    onChange={(e) =>
-                      updateCommande({ montantPaye: Math.min(+e.target.value, montantNet) })
-                    }
+                    onChange={(e) => {
+                      const value = +e.target.value;
+                      if (value > montantNet) {
+                        setShowMontantWarning(true);
+                        updateCommande({ montantPaye: montantNet });
+                        setTimeout(() => setShowMontantWarning(false), 3000);
+                      } else {
+                        setShowMontantWarning(false);
+                        updateCommande({ montantPaye: value });
+                      }
+                    }}
                     placeholder="0"
                   />
+                  {showMontantWarning && (
+                    <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
+                      <span className="text-lg">⚠️</span>
+                      <span>
+                        Le montant payé ne peut pas dépasser le total net à payer. 
+                        <br />
+                        <strong>Montant ajusté à : {montantNet.toLocaleString()} FCFA</strong>
+                      </span>
+                    </div>
+                  )}
                   {commande.montantPaye > 0 && commande.montantPaye < montantNet && (
                     <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
                       ⚠️ Reste à payer : {(montantNet - commande.montantPaye).toLocaleString()} FCFA

@@ -16,7 +16,7 @@ import autoTable from "jspdf-autotable";
 interface Commande {
   id: number;
   clientNom: string;
-  articles?: string[]; // ici ce sont juste des noms d’articles
+  articles?: string[];
   montantsNets?: number[];
   montantNetTotal?: number;
   dateReception?: string;
@@ -35,12 +35,12 @@ export default function Commandes() {
     async function load() {
       try {
         const data = await getAllCommandes();
-        // Calcul automatique du montant net total si non fourni
         const dataWithTotals = data.map((c: any) => ({
           ...c,
           montantNetTotal:
             c.montantsNets?.reduce((sum: number, m: number) => sum + m, 0) ?? 0,
         }));
+        // Trie décroissant pour avoir les plus récents en premier
         setCommandes(dataWithTotals.sort((a: any, b: any) => b.id - a.id));
       } catch (err) {
         console.error("Erreur récupération commandes:", err);
@@ -65,7 +65,6 @@ export default function Commandes() {
 
     doc.setFontSize(18);
     doc.text("Commandes Export PDF", 14, 20);
-
     doc.setFontSize(12);
     doc.text(`Exporté le : ${new Date().toLocaleString()}`, 14, 28);
 
@@ -80,7 +79,7 @@ export default function Commandes() {
     }
 
     const tableColumn = [
-      "ID",
+      "N°",
       "Client",
       "Quantité totale",
       "Montant Net",
@@ -88,10 +87,10 @@ export default function Commandes() {
       "Statut",
     ];
 
-    const tableRows = filtered.map((c) => [
-      c.id,
+    const tableRows = filtered.map((c, index) => [
+      filtered.length - index, // Numérotation décroissante
       c.clientNom ?? "",
-      c.articles?.length ?? 0, // ✅ Correction quantité
+      c.articles?.length ?? 0,
       c.montantNetTotal?.toLocaleString("fr-FR") ?? "0",
       c.dateLivraison ?? "",
       c.statut ?? "",
@@ -113,6 +112,7 @@ export default function Commandes() {
 
   return (
     <div className="p-6 space-y-6 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
+      {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <List className="text-blue-600 dark:text-blue-400" />
@@ -136,6 +136,7 @@ export default function Commandes() {
         </div>
       </div>
 
+      {/* FILTRES */}
       <Card className="p-4 flex gap-4 dark:bg-gray-800">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-300" />
@@ -172,12 +173,13 @@ export default function Commandes() {
         </select>
       </Card>
 
+      {/* TABLE */}
       <Card className="overflow-hidden dark:bg-gray-800">
         <div className="max-h-[500px] overflow-y-auto">
           <table className="min-w-full border-collapse">
             <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-2 text-left dark:text-gray-100">ID</th>
+                <th className="px-4 py-2 text-left dark:text-gray-100">#</th>
                 <th className="px-4 py-2 text-left dark:text-gray-100">Client</th>
                 <th className="px-4 py-2 text-left dark:text-gray-100">QT</th>
                 <th className="px-4 py-2 text-right dark:text-gray-100">Net</th>
@@ -189,12 +191,12 @@ export default function Commandes() {
 
             <tbody>
               {filtered.length > 0 ? (
-                filtered.map((c) => (
+                filtered.map((c, index) => (
                   <tr
                     key={c.id}
                     className="border-t hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
-                    <td className="px-4 py-2">{c.id}</td>
+                    <td className="px-4 py-2">{filtered.length - index}</td>
                     <td className="px-4 py-2">{c.clientNom ?? ""}</td>
                     <td className="px-4 py-2">{c.articles?.length ?? 0}</td>
                     <td className="px-4 py-2 text-right">
