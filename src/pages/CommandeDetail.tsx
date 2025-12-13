@@ -266,7 +266,7 @@ const montantValide = montantActuel === "" || Number(montantActuel) <= resteAPay
             <div className="space-y-2">
               <p><b>Payé :</b> {Number(commande.montantPaye ?? 0).toLocaleString()} FCFA</p>
               <p className={`font-bold text-lg ${resteAPayer === 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                Reste  payer : {resteAPayer.toLocaleString()} FCFA
+                Reste à payer : {resteAPayer.toLocaleString()} FCFA
               </p>
               <p className="flex items-center gap-2">
                 <b>Statut paiement :</b>
