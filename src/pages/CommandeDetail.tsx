@@ -61,8 +61,11 @@ export default function CommandeDetail() {
     );
   }
 
-  const resteAPayer = Number(commande?.montantNetTotal ?? 0) - Number(commande?.montantPaye ?? 0);
-  const montantValide = montantActuel === "" || Number(montantActuel) <= resteAPayer;
+ // const resteAPayer = Number(commande?.montantNetTotal ?? 0) - Number(commande?.montantPaye ?? 0);
+//  const montantValide = montantActuel === "" || Number(montantActuel) <= resteAPayer;
+
+const resteAPayer = commande?.resteAPayer ?? 0;
+const montantValide = montantActuel === "" || Number(montantActuel) <= resteAPayer;
 
   // 🔍 Détection du type de commande (après le chargement)
   const estCommandePesage = commande?.articles?.some((a: any) => a.tranchePoids !== null && a.tranchePoids !== undefined);
