@@ -110,10 +110,10 @@ export async function getCommandePdf(id: number) {
   return res.blob();
 }
 
-// ========================= UPDATE STATUT =========================
-export async function updateStatutCommandeAvecMontant(
+// ========================= UPDATE STATUT + MONTANT + RELIQUAT =========================
+export async function updateStatutCommandeAvecPaiement(
   id: number,
-  payload: { montantActuel: number }
+  payload: { montantActuel: number; reliquat?: number; nouveauStatut?: "EN_COURS" | "LIVREE" }
 ) {
   const token = localStorage.getItem("authToken");
 
@@ -131,6 +131,7 @@ export async function updateStatutCommandeAvecMontant(
     throw new Error(`Erreur serveur: ${text || res.statusText}`);
   }
 
+  // ⚡ Récupère le PDF généré
   const pdfBlob = await res.blob();
   const url = window.URL.createObjectURL(pdfBlob);
   window.open(url, "_blank");
