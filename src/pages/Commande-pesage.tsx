@@ -8,25 +8,25 @@ import { getAllTarifPoids } from "../services/tarifPoids.Service";
 // ---- TYPES ----
 type Client = { id: string; nom: string; telephone: string };
 type TarifKilo = { id: number; tranchePoids: string; service: string; prix: number };
-type ArticlePoids = { 
-  id: string; 
+type ArticlePoids = {
+  id: string;
   tarifKiloId: number;
-  tranchePoids: string; 
-  service: string; 
+  tranchePoids: string;
+  service: string;
   prix: number;
   poids: number;
 };
-type CommandeState = { 
-  clientId: string; 
-  dateReception: string; 
-  dateLivraison: string; 
-  remiseGlobale: number; 
-  montantPaye: number; 
+type CommandeState = {
+  clientId: string;
+  dateReception: string;
+  dateLivraison: string;
+  remiseGlobale: number;
+  montantPaye: number;
 };
-type DraftArticlePoids = { 
+type DraftArticlePoids = {
   tarifKiloId: number;
-  tranchePoids: string; 
-  service: string; 
+  tranchePoids: string;
+  service: string;
   prix: number;
   poids: number;
 };
@@ -177,41 +177,37 @@ export default function CommandePesage() {
   };
 
   const handleAjouterArticlePoids = () => {
-    if (!draftArticlePoids.tranchePoids || !draftArticlePoids.service) {
-      alert("⚠️ Veuillez sélectionner une tranche de poids et un service.");
-      return;
-    }
+    if (!draftArticlePoids.tranchePoids || !draftArticlePoids.service) return;
+    if (!draftArticlePoids.poids || draftArticlePoids.poids <= 0) return;
 
-    if (!draftArticlePoids.poids || draftArticlePoids.poids <= 0) {
-      alert("⚠️ Veuillez saisir un poids valide.");
-      return;
-    }
-
-    // Vérifier la contrainte de tranche — le poids ne doit pas dépasser la borne supérieure
     const maxAllowed = getMaxWeightForTranche(draftArticlePoids.tranchePoids);
     if (Number.isFinite(maxAllowed) && draftArticlePoids.poids > maxAllowed) {
-      alert(`⚠️ Le poids ne doit pas dépasser ${maxAllowed} Kg pour la tranche sélectionnée.`);
+      alert(`⚠️ Le poids ne doit pas dépasser ${maxAllowed} Kg`);
       return;
     }
+
+    const prixCalcule = draftArticlePoids.prix * draftArticlePoids.poids;
 
     const nouvelArticle: ArticlePoids = {
       id: crypto.randomUUID(),
       tarifKiloId: draftArticlePoids.tarifKiloId,
       tranchePoids: draftArticlePoids.tranchePoids,
       service: draftArticlePoids.service,
-      prix: draftArticlePoids.prix,
+      prix: prixCalcule,        // ✅ prix réel
       poids: draftArticlePoids.poids,
     };
 
     setArticlesPoids((prev) => [...prev, nouvelArticle]);
-    setDraftArticlePoids({ 
+
+    setDraftArticlePoids({
       tarifKiloId: 0,
-      tranchePoids: "", 
-      service: "", 
-      prix: 0, 
-      poids: 0 
+      tranchePoids: "",
+      service: "",
+      prix: 0,
+      poids: 0,
     });
   };
+
 
   const handleSupprimerArticlePoids = (id: string) => {
     setArticlesPoids((prev) => prev.filter((a) => a.id !== id));
@@ -377,11 +373,11 @@ export default function CommandePesage() {
               <Select
                 value={draftArticlePoids.tranchePoids}
                 onChange={(v) =>
-                  updateDraftArticlePoids({ 
-                    tranchePoids: v, 
-                    service: "", 
+                  updateDraftArticlePoids({
+                    tranchePoids: v,
+                    service: "",
                     prix: 0,
-                    tarifKiloId: 0 
+                    tarifKiloId: 0
                   })
                 }
               >
@@ -440,8 +436,8 @@ export default function CommandePesage() {
               className="bg-green-600 hover:bg-green-700 mt-6"
               onClick={handleAjouterArticlePoids}
               disabled={
-                !draftArticlePoids.tranchePoids || 
-                !draftArticlePoids.service || 
+                !draftArticlePoids.tranchePoids ||
+                !draftArticlePoids.service ||
                 !draftArticlePoids.poids
               }
             >
@@ -550,7 +546,7 @@ export default function CommandePesage() {
                     <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
                       <span className="text-lg">⚠️</span>
                       <span>
-                        La remise ne peut pas dépasser le total brut. 
+                        La remise ne peut pas dépasser le total brut.
                         <br />
                         <strong>Remise ajustée à : {montantTotal.toLocaleString()} FCFA</strong>
                       </span>
@@ -590,7 +586,7 @@ export default function CommandePesage() {
                     <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
                       <span className="text-lg">⚠️</span>
                       <span>
-                        Le montant payé ne peut pas dépasser le total net à payer. 
+                        Le montant payé ne peut pas dépasser le total net à payer.
                         <br />
                         <strong>Montant ajusté à : {montantNet.toLocaleString()} FCFA</strong>
                       </span>
@@ -609,9 +605,8 @@ export default function CommandePesage() {
 
         {/* BOUTON DE SOUMISSION */}
         <Button
-          className={`w-full py-3 text-lg ${
-            loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-          }`}
+          className={`w-full py-3 text-lg ${loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+            }`}
           onClick={handleSubmit}
           disabled={loading || articlesPoids.length === 0}
         >
