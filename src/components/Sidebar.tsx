@@ -64,14 +64,19 @@ export function Sidebar({
   // -----------------------------
   // Navigation filtrée par rôle
   // -----------------------------
-  const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Clients", href: "/clients", icon: Users },
-    { name: "Commandes", href: "/commandes", icon: ShoppingBag },
-    { name: "Pressing", href: "/parametres", icon: Shirt },
-    { name: "Charge", href: "/charge", icon: Archive },
-    ...(isAdmin ? [{ name: "Rapport", href: "/rapports", icon: FileText }] : []),
-  ];
+const navigation = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Clients", href: "/clients", icon: Users },
+  { name: "Commandes", href: "/commandes", icon: ShoppingBag },
+  { name: "Pressing", href: "/parametres", icon: Shirt },
+
+  ...(isAdmin
+    ? [
+        { name: "Charge", href: "/charge", icon: Archive },
+        { name: "Rapport", href: "/rapports", icon: FileText },
+      ]
+    : []),
+];
 
   const handleLogout = () => {
     const sidebarContent = document.querySelector(".sidebar-content");
