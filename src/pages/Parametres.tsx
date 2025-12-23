@@ -3,17 +3,18 @@ import { useNavigate } from "react-router-dom";
 import {
   getMyPressing,
   createPressing,
-  updatePressing,
   Pressing
 } from "../services/pressing.service";
-import { Loader2, Pencil, Plus, Mail, Phone, MapPin, Building2, Tag, X, Smartphone } from "lucide-react";
+import { 
+  Loader2, Plus, Mail, Phone, MapPin, 
+  Building2, Tag, X, Smartphone, RefreshCw 
+} from "lucide-react";
 
 export default function Parametres() {
   const [pressing, setPressing] = useState<Pressing | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
 
   const navigate = useNavigate();
 
@@ -35,35 +36,17 @@ export default function Parametres() {
       const p = await getMyPressing();
       setPressing(p || null);
     } catch (e: any) {
-      console.error("Erreur récupération pressing:", e);
-      if (e.message?.includes("404") || e.status === 404 || e.message?.includes("Not Found")) {
+      if (e.message?.includes("404") || e.status === 404) {
         setPressing(null);
-        setError("Veuillez créer un compte pressing pour commencer.");
-      } else if (e.message?.includes("500")) {
-        setError("Erreur serveur. Vérifiez que vous êtes bien authentifié.");
       } else {
-        setError(e.message || "Erreur lors de la récupération des données");
+        setError("Erreur lors de la récupération des données.");
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadPressing();
-  }, []);
-
-  const openDialog = (mode: "create" | "edit") => {
-    setDialogMode(mode);
-    if (mode === "edit" && pressing) {
-      setForm({ ...pressing });
-      setPreviewLogo(pressing.logo ? `data:image/png;base64,${pressing.logo}` : null);
-    } else {
-      setForm({ nom: "", telephone: "", cel: "", adresse: "", logo: "", id: undefined });
-      setPreviewLogo(null);
-    }
-    setIsDialogOpen(true);
-  };
+  useEffect(() => { loadPressing(); }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -72,311 +55,186 @@ export default function Parametres() {
       reader.onload = () => {
         const result = reader.result as string;
         setPreviewLogo(result);
-        const base64ForBackend = result.split(",")[1];
-        setForm(prev => ({ ...prev, logo: base64ForBackend }));
+        setForm(prev => ({ ...prev, logo: result.split(",")[1] }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleRemoveLogo = () => {
-    setPreviewLogo(null);
-    setForm(prev => ({ ...prev, logo: "" }));
-  };
-
   const handleSubmit = async () => {
-    if (!form.nom || !form.telephone || !form.adresse) {
-      alert("Veuillez remplir tous les champs obligatoires (Nom, Téléphone, Adresse).");
-      return;
-    }
-
+    if (!form.nom || !form.telephone || !form.adresse) return;
     setIsLoading(true);
-    const logoToSend = form.logo || null;
-
     try {
-      if (dialogMode === "create") {
-        await createPressing({ ...form, logo: logoToSend });
-      } else if (dialogMode === "edit" && pressing) {
-        await updatePressing({ ...form, logo: logoToSend, id: pressing.id });
-      }
-
+      await createPressing(form);
       setIsDialogOpen(false);
       await loadPressing();
     } catch (e: any) {
-      console.error("Erreur lors de l'enregistrement du pressing:", e);
-      setError(e.message || "Erreur lors de l'enregistrement");
+      setError(e.message || "Erreur lors de la création");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoToTarifs = () => {
-    navigate('/tarifs');
-  };
-
-  const getLogoSource = (logoBase64: string | undefined | null) => {
-    if (previewLogo) return previewLogo;
-    if (logoBase64 && logoBase64.startsWith('http')) return logoBase64;
-    if (logoBase64) return `data:image/png;base64,${logoBase64}`;
-    return "/logo-default.png";
+  const getLogoSource = (logo: string | undefined | null) => {
+    if (logo) return `data:image/png;base64,${logo}`;
+    return null;
   };
 
   return (
-    <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-6">
-
-        {/* HEADER */}
+    <div className="p-4 md:p-8 bg-gray-50 dark:bg-gray-950 min-h-screen">
+      <div className="max-w-3xl mx-auto space-y-8">
+        
+        {/* HEADER SIMPLE */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Paramètres du Pressing</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Gérez les informations de votre établissement</p>
+            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Paramètres</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Informations de votre établissement</p>
           </div>
 
           <div className="flex gap-2">
+            <button 
+              onClick={loadPressing} 
+              className="p-2.5 text-gray-500 hover:bg-white dark:hover:bg-gray-800 rounded-full transition border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+            >
+              <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
+            </button>
             {pressing && (
               <button
-                onClick={handleGoToTarifs}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm"
-                title="Gérer les tarifs du pressing"
+                onClick={() => navigate('/tarifs')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold transition hover:bg-indigo-700 shadow-md"
               >
-                <Tag size={18} /> Tarifs
+                <Tag size={18} /> <span className="hidden sm:inline">Tarifs</span>
               </button>
             )}
-            
-            <button
-              onClick={loadPressing}
-              disabled={isLoading}
-              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100 rounded-lg flex items-center gap-2 transition"
-            >
-              {isLoading ? (
-                <Loader2 className="animate-spin" size={18} />
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-              )}
-              Actualiser
-            </button>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg">
-            <p className="font-medium">Erreur</p>
-            <p className="text-sm">{error}</p>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-sm font-medium">
+            {error}
           </div>
         )}
 
-        {/* PRESSING INFO */}
+        {/* AFFICHAGE DES INFOS (MODE LECTURE) */}
         {pressing ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="rounded-full bg-white dark:bg-gray-700 border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden flex-shrink-0 w-24 h-24 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+            <div className="h-20 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-700 w-full" />
+            
+            <div className="px-6 pb-8">
+              <div className="relative -mt-10 mb-6">
+                <div className="w-24 h-24 rounded-2xl bg-white dark:bg-gray-800 p-1.5 shadow-md border border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+                  {pressing.logo ? (
                     <img 
-                      src={getLogoSource(pressing.logo)} 
-                      alt={pressing.nom} 
-                      className="max-h-full max-w-full object-contain" 
-                      onError={(e) => { (e.target as HTMLImageElement).src = "/logo-default.png" }}
+                      src={getLogoSource(pressing.logo)!} 
+                      alt="Logo" 
+                      className="w-full h-full object-contain" // Pas de zoom
                     />
-                  </div>
-                  <div className="mt-0">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pressing.nom}</h2>
-                    {pressing.email && (
-                      <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{pressing.email}</p>
-                    )}
-                  </div>
+                  ) : (
+                    <Building2 size={40} className="text-gray-300" />
+                  )}
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {pressing.email && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
-                      <Mail size={20} className="text-blue-600 dark:text-blue-300" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Email</p>
-                      <p className="text-sm text-gray-900 dark:text-gray-100">{pressing.email}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="p-2 bg-green-100 dark:bg-green-800 rounded-lg">
-                    <Phone size={20} className="text-green-600 dark:text-green-300" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Téléphone</p>
-                    <p className="text-sm text-gray-900 dark:text-gray-100">{pressing.telephone}</p>
-                  </div>
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{pressing.nom}</h2>
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full text-xs font-bold uppercase tracking-wider">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  Compte Actif
                 </div>
+              </div>
 
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
-                    <MapPin size={20} className="text-purple-600 dark:text-purple-300" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Adresse</p>
-                    <p className="text-sm text-gray-900 dark:text-gray-100">{pressing.adresse}</p>
-                  </div>
-                </div>
-
-                {pressing.cel && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="p-2 bg-orange-100 dark:bg-orange-800 rounded-lg">
-                      <Smartphone size={20} className="text-orange-600 dark:text-orange-300" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Téléphone secondaire</p>
-                      <p className="text-sm text-gray-900 dark:text-gray-100">{pressing.cel}</p>
-                    </div>
-                  </div>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <DisplayField icon={<Phone size={18}/>} label="Téléphone Principal" value={pressing.telephone} />
+                <DisplayField icon={<Smartphone size={18}/>} label="Mobile / WhatsApp" value={pressing.cel || "Non renseigné"} />
+                <DisplayField icon={<MapPin size={18}/>} label="Adresse" value={pressing.adresse} />
+                <DisplayField icon={<Mail size={18}/>} label="Email" value={pressing.email || "Non renseigné"} />
               </div>
             </div>
           </div>
         ) : (
-          !isLoading && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-dashed border-gray-300 dark:border-gray-600 p-12 text-center">
-              <div className="flex flex-col items-center">
-                <div className="w-20 h-20 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center mb-4">
-                  <Building2 size={40} className="text-blue-600 dark:text-blue-300" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Aucun pressing configuré</h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md">
-                  Commencez par créer votre pressing pour gérer vos services et vos clients
-                </p>
-                <button
-                  onClick={() => openDialog("create")}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition shadow-sm text-lg"
-                >
-                  <Plus size={20} /> Créer mon Pressing
-                </button>
-              </div>
-            </div>
-          )
+          !isLoading && <EmptyState onCreate={() => setIsDialogOpen(true)} />
         )}
 
-        {/* MODAL FORMULAIRE */}
+        {/* MODAL DE CRÉATION UNIQUEMENT */}
         {isDialogOpen && (
-          <div className="fixed inset-0 bg-black/50 dark:bg-black/60 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-600">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {dialogMode === "edit" ? "Configurer le Pressing" : "Créer un Pressing"}
-                </h2>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                  Renseignez les informations de votre établissement
-                </p>
-              </div>
-
-              <div className="p-6 space-y-5">
-                {/* Formulaire */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Nom du pressing *</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Pressing du Centre"
-                    value={form.nom}
-                    onChange={e => setForm({ ...form, nom: e.target.value })}
-                    className="border border-gray-300 dark:border-gray-600 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => setIsDialogOpen(false)} />
+            <div className="relative bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden">
+              <div className="p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold dark:text-white">Créer mon Pressing</h3>
+                  <button onClick={() => setIsDialogOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Téléphone principal *</label>
-                  <input
-                    type="tel"
-                    placeholder="+228 XX XX XX XX"
-                    value={form.telephone}
-                    onChange={e => setForm({ ...form, telephone: e.target.value })}
-                    className="border border-gray-300 dark:border-gray-600 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Adresse *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Lomé, Baguida"
-                      value={form.adresse}
-                      onChange={e => setForm({ ...form, adresse: e.target.value })}
-                      className="border border-gray-300 dark:border-gray-600 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Téléphone secondaire</label>
-                    <input
-                      type="tel"
-                      placeholder="+228 XX XX XX XX"
-                      value={form.cel || ""}
-                      onChange={e => setForm({ ...form, cel: e.target.value })}
-                      className="border border-gray-300 dark:border-gray-600 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                  </div>
-                </div>
-
-                {/* Logo */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Logo</label>
-                  {!previewLogo ? (
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="border border-gray-300 dark:border-gray-600 p-2 w-full rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-800 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-700"
-                    />
-                  ) : (
-                    <div className="relative inline-block">
-                      <img
-                        src={previewLogo}
-                        className="h-24 w-24 rounded-lg object-contain border border-gray-200 dark:border-gray-600 shadow-md"
-                        alt="Aperçu du logo"
-                        onError={(e) => { (e.target as HTMLImageElement).src = "/logo-default.png" }}
-                      />
-                      <button
-                        onClick={handleRemoveLogo}
-                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg transition"
-                        title="Supprimer le logo"
-                      >
-                        <X size={16} />
-                      </button>
+                <div className="space-y-5">
+                  <div className="flex flex-col items-center mb-4">
+                    <div className="relative w-20 h-20 rounded-xl bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden">
+                      {previewLogo ? <img src={previewLogo} className="w-full h-full object-contain" /> : <Plus className="text-gray-400" />}
+                      <input type="file" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
                     </div>
-                  )}
-                </div>
+                    <span className="text-[10px] text-gray-500 mt-2 uppercase font-bold tracking-tight">Ajouter un logo</span>
+                  </div>
 
-                {/* Boutons */}
-                <div className="flex gap-3 pt-4">
-                  <button
-                    onClick={handleSubmit}
-                    disabled={isLoading || !form.nom || !form.telephone || !form.adresse}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg flex items-center justify-center gap-2 transition font-medium disabled:opacity-50"
+                  <SimpleInput label="Nom du pressing" value={form.nom} onChange={v => setForm({...form, nom: v})} />
+                  <SimpleInput label="Téléphone" value={form.telephone} onChange={v => setForm({...form, telephone: v})} type="tel" />
+                  <SimpleInput label="Adresse" value={form.adresse} onChange={v => setForm({...form, adresse: v})} />
+                  <SimpleInput label="Second Téléphone" value={form.cel || ""} onChange={v => setForm({...form, cel: v})} type="tel" />
+
+                  <button 
+                    onClick={handleSubmit} 
+                    disabled={!form.nom || !form.telephone || !form.adresse}
+                    className="w-full bg-blue-600 disabled:bg-gray-300 hover:bg-blue-700 text-white py-4 rounded-2xl font-bold transition mt-4"
                   >
-                    {isLoading && <Loader2 size={18} className="animate-spin" />}
-                    {dialogMode === "edit" ? "Mettre à jour" : "Créer"}
-                  </button>
-                  <button
-                    onClick={() => setIsDialogOpen(false)}
-                    className="px-6 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100 rounded-lg transition font-medium"
-                  >
-                    Annuler
+                    {isLoading ? <Loader2 className="animate-spin mx-auto" /> : "Finaliser la création"}
                   </button>
                 </div>
               </div>
             </div>
           </div>
         )}
-
       </div>
+    </div>
+  );
+}
+
+// Composant pour l'affichage pur
+function DisplayField({ icon, label, value }: { icon: any, label: string, value: string }) {
+  return (
+    <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700/50">
+      <div className="text-blue-600 dark:text-blue-400">{icon}</div>
+      <div>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-200">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function SimpleInput({ label, value, onChange, type = "text" }: any) {
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-bold text-gray-600 dark:text-gray-400 ml-1 uppercase">{label}</label>
+      <input 
+        type={type} 
+        value={value} 
+        onChange={e => onChange(e.target.value)} 
+        className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl p-3.5 text-sm focus:ring-2 focus:ring-blue-500 dark:text-white"
+      />
+    </div>
+  );
+}
+
+function EmptyState({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800 text-center">
+      <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
+        <Plus size={32} className="text-blue-600 dark:text-blue-400" />
+      </div>
+      <h2 className="text-lg font-bold text-gray-900 dark:text-white">Aucun pressing configuré</h2>
+      <p className="text-gray-500 text-sm max-w-xs mt-1 mb-6">Créez votre profil pour commencer à gérer vos tarifs et commandes.</p>
+      <button onClick={onCreate} className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition">
+        Créer mon profil
+      </button>
     </div>
   );
 }

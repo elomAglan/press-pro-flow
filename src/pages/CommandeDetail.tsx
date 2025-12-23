@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, CheckCircle, Scale, Shirt, Trash2 } from "lucide-react";
+import { 
+  ArrowLeft, Loader2, CheckCircle, Scale, Shirt, 
+  Trash2, FileText, Phone, User, Calendar, CreditCard, ChevronRight 
+} from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -16,6 +19,9 @@ import {
 } from "../services/commande.service";
 import { getClientById } from "../services/client.service";
 
+// Type strict pour TypeScript
+type StatutCommande = "EN_COURS" | "LIVREE";
+
 export default function CommandeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -30,21 +36,24 @@ export default function CommandeDetail() {
   const [showModal, setShowModal] = useState(false);
   const [montantActuel, setMontantActuel] = useState("");
   const [reliquat, setReliquat] = useState<number>(0);
-  const [nouveauStatut, setNouveauStatut] = useState<"EN_COURS" | "LIVREE">("EN_COURS");
+  const [nouveauStatut, setNouveauStatut] = useState<StatutCommande>("EN_COURS");
   const [showMontantWarning, setShowMontantWarning] = useState(false);
 
-  // =================== CHARGEMENT COMMANDE & CLIENT ===================
   useEffect(() => {
     async function load() {
       try {
         const data = await getCommandeById(Number(id));
         setCommande(data);
-        setNouveauStatut(data.statut);
-
+        // On s'assure que le statut est bien du type attendu
+        if (data.statut === "LIVREE" || data.statut === "EN_COURS") {
+          setNouveauStatut(data.statut);
+        }
         if (data.clientId) {
           const clientData = await getClientById(data.clientId);
           setClient(clientData);
         }
+      } catch (err) {
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -54,309 +63,169 @@ export default function CommandeDetail() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-[60vh] dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="flex flex-col justify-center items-center h-[80vh] dark:bg-gray-950">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
       </div>
     );
   }
 
   if (!commande) {
-    return (
-      <div className="p-8 text-center text-red-500 dark:text-red-400 dark:bg-gray-900">
-        Commande introuvable
-      </div>
-    );
+    return <div className="p-8 text-center text-red-500">Commande introuvable</div>;
   }
 
   const resteAPayer = commande?.resteAPayer ?? 0;
   const montantValide = montantActuel === "" || Number(montantActuel) <= resteAPayer;
+  const estCommandePesage = commande?.articles?.some((a: any) => a.tranchePoids);
 
-  const estCommandePesage = commande?.articles?.some(
-    (a: any) => a.tranchePoids !== null && a.tranchePoids !== undefined
-  );
-
-  // =================== VALIDER PAIEMENT ===================
   async function handleValiderPaiement() {
     if (!commande || !montantValide) return;
-
     try {
       const payload = {
         montantActuel: Number(montantActuel || 0),
         reliquat: reliquat > 0 ? reliquat : undefined,
-        nouveauStatut,
+        nouveauStatut: nouveauStatut as "EN_COURS" | "LIVREE",
       };
-
       await updateStatutCommandeAvecPaiement(commande.id, payload);
-
-      // Recharger la commande et le client après mise à jour
       const data = await getCommandeById(commande.id);
       setCommande(data);
-      if (data.clientId) {
-        const updatedClient = await getClientById(data.clientId);
-        setClient(updatedClient);
-      }
-
-      // Reset modal
       setMontantActuel("");
-      setReliquat(0);
       setShowModal(false);
-      setShowMontantWarning(false);
     } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la mise à jour du paiement/statut");
+      alert("Erreur lors de la mise à jour");
     }
   }
 
-  // =================== PDF ===================
   async function handleDownloadPdf() {
-    if (!commande) return;
-
     try {
       const blob = await getCommandePdf(commande.id);
       const url = window.URL.createObjectURL(blob);
       window.open(url, "_blank");
-      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-    } catch (err: any) {
-      alert(err.message || "Erreur lors du téléchargement du PDF");
-    }
-  }
-
-  // =================== SUPPRESSION ===================
-  async function handleSupprimerCommande() {
-    if (!commande) return;
-
-    const confirmed = window.confirm(`Confirmer la suppression de la commande #${commande.id} ?`);
-    if (!confirmed) return;
-
-    try {
-      await deleteCommande(commande.id);
-      alert("La commande a été supprimée.");
-      navigate("/commandes");
     } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la suppression de la commande.");
+      alert("Erreur lors de la génération du PDF");
     }
   }
 
-  // =================== RENDER ===================
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8 dark:bg-gray-900 dark:text-gray-100">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <button
-          onClick={() => navigate("/commandes")}
-          className="flex items-center gap-2 text-blue-700 hover:underline dark:text-blue-400"
-        >
-          <ArrowLeft size={20} /> Retour
-        </button>
-
-        <div className="flex items-center gap-3">
-          {isAdmin && (
-            <Button
-              className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white flex items-center gap-2"
-              onClick={handleSupprimerCommande}
-            >
-              <Trash2 className="h-4 w-4 mr-2" /> Supprimer
-            </Button>
-          )}
-
-          <Button
-            className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white flex items-center gap-2"
-            onClick={() => setShowModal(true)}
-          >
-            <CheckCircle className="h-4 w-4 mr-2" /> Mettre à jour le paiement/statut
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-10">
+      {/* HEADER STICKY */}
+      <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b p-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/commandes")}>
+            <ArrowLeft className="h-5 w-5 md:mr-2" />
+            <span className="hidden md:inline">Retour</span>
           </Button>
+          <div className="flex gap-2">
+
+            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => setShowModal(true)}>
+              <CreditCard className="h-4 w-4 md:mr-2" />
+              Paiement
+            </Button>
+            {isAdmin && (
+              <Button size="icon" variant="destructive" className="h-9 w-9" onClick={() => {}}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* TITRE */}
-      <div>
-        <h1 className="text-3xl font-bold dark:text-gray-100 flex items-center gap-3">
-          Commande #{commande.id}
-          {estCommandePesage ? (
-            <Badge className="bg-purple-600 text-white flex items-center gap-1">
-              <Scale size={14} /> Par pesage
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl md:text-3xl font-bold">Commande #{commande.id}</h1>
+            <Badge className={estCommandePesage ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}>
+              {estCommandePesage ? "Pesage" : "Standard"}
             </Badge>
-          ) : (
-            <Badge className="bg-blue-600 text-white flex items-center gap-1">
-              <Shirt size={14} /> Standard
-            </Badge>
-          )}
-        </h1>
-        <p className="text-gray-600 mt-1 dark:text-gray-300">
-          Réception : <b>{commande.dateReception}</b> — Livraison : <b>{commande.dateLivraison}</b>
-        </p>
-      </div>
-
-      {/* CLIENT & ARTICLES */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="p-6 shadow-sm border-l-4 border-blue-600 dark:bg-gray-800">
-          <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">Informations Client</h2>
-          <div className="space-y-2 text-sm">
-            <p><b>Nom :</b> {client?.nom}</p>
-            <p><b>Téléphone :</b> {client?.telephone}</p>
           </div>
-        </Card>
+          <p className="text-sm text-muted-foreground flex items-center gap-4">
+            <span>Reçu : {commande.dateReception}</span>
+            <span className="text-orange-600 font-medium">Livraison : {commande.dateLivraison}</span>
+          </p>
+        </div>
 
-        <Card className="p-6 shadow-sm border-l-4 border-green-600 dark:bg-gray-800">
-          <h2 className="text-xl font-semibold mb-4 dark:text-gray-100 flex items-center gap-2">
-            {estCommandePesage ? <Scale size={20} className="text-purple-600" /> : <Shirt size={20} className="text-blue-600" />}
-            Articles & Services
-          </h2>
-          <div className="space-y-3">
-            {commande.articles?.map((a: any, index: number) => {
-              const tranchePoids = a.tranchePoids || a.tranche_poids || null;
-              const service = a.service || "Service non spécifié";
-              const article = a.article || "Article non spécifié";
-              const estPesage = (a.kilo ?? 0) > 0 || tranchePoids !== null;
-              const quantite = estPesage ? a.kilo ?? 0 : a.qte ?? 0;
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* CLIENT & FINANCE */}
+          <div className="space-y-6">
+            <Card className="p-5 border-t-4 border-t-blue-500 shadow-sm">
+              <h2 className="text-lg font-bold flex items-center gap-2 mb-4"><User className="h-5 w-5 text-blue-500" /> Client</h2>
+              <div className="space-y-2 text-sm">
+                <p><b>Nom :</b> {client?.nom || "N/A"}</p>
+                <p><b>Tel :</b> {client?.telephone || "N/A"}</p>
+              </div>
+            </Card>
 
-              return (
-                <div key={a.id || index} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
-                  {estPesage ? (
-                    <>
-                      <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Scale size={16} className="text-purple-600" /> {tranchePoids || "Tranche de poids"}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300"><b>Poids :</b> {quantite} kg</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300"><b>Prix :</b> {(a.montantBrut || 0).toLocaleString()} FCFA</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Shirt size={16} className="text-blue-600" /> {article} / {service}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1"><b>Quantité :</b> {quantite} pcs</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300"><b>Montant :</b> {(a.montantBrut || 0).toLocaleString()} FCFA</p>
-                    </>
-                  )}
+            <Card className="p-5 border-t-4 border-t-green-500 shadow-sm">
+              <h2 className="text-lg font-bold flex items-center gap-2 mb-4"><CreditCard className="h-5 w-5 text-green-500" /> Paiement</h2>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Net à payer</span>
+                  <span className="font-bold">{commande.montantNetTotal?.toLocaleString()} FCFA</span>
                 </div>
-              );
-            })}
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Déjà payé</span>
+                  <span>{(commande.montantPaye || 0).toLocaleString()} FCFA</span>
+                </div>
+                <div className="pt-2 border-t flex justify-between items-center text-red-600 font-black">
+                  <span>Reste</span>
+                  <span className="text-xl">{resteAPayer.toLocaleString()} FCFA</span>
+                </div>
+              </div>
+            </Card>
           </div>
-        </Card>
 
-        {/* MONTANTS */}
-        <Card className="p-6 shadow-sm bg-gray-50 border dark:bg-gray-800 md:col-span-2">
-          <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">Montants</h2>
-          <div className="grid md:grid-cols-2 gap-4 text-sm">
-            <div className="space-y-2">
-              <p><b>Montant brut :</b> {commande.articles?.reduce((sum: number, a: any) => sum + a.montantBrut, 0).toLocaleString()} FCFA</p>
-              <p><b>Remise :</b> {commande.remiseGlobale?.toLocaleString() ?? 0} FCFA</p>
-              <p className="text-lg font-bold text-blue-600 dark:text-blue-400"><b>Net :</b> {commande.montantNetTotal?.toLocaleString() ?? 0} FCFA</p>
-            </div>
-            <div className="space-y-2">
-              <p><b>Payé :</b> {(commande.montantPaye ?? 0).toLocaleString()} FCFA</p>
-              <p className={`font-bold text-lg ${resteAPayer === 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                Reste à payer : {resteAPayer.toLocaleString()} FCFA
-              </p>
-              <p className="flex items-center gap-2">
-                <b>Statut paiement :</b>
-                <Badge className={`px-3 py-1 text-white ${
-                  commande.statutPaiement === "Payé" ? "bg-green-600 dark:bg-green-700" :
-                  commande.statutPaiement === "Partiel" ? "bg-orange-500 dark:bg-orange-600" :
-                  "bg-red-500 dark:bg-red-600"}`}>
-                  {commande.statutPaiement}
-                </Badge>
-              </p>
-            </div>
+          {/* ARTICLES */}
+          <div className="lg:col-span-2">
+            <Card className="shadow-sm">
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 border-b font-bold">Liste des Articles</div>
+              <div className="divide-y">
+                {commande.articles?.map((a: any, idx: number) => (
+                  <div key={idx} className="p-4 flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-sm">{a.article || a.tranchePoids}</p>
+                      <p className="text-xs text-muted-foreground">{a.service} • Qté: {a.qte || a.kilo}</p>
+                    </div>
+                    <p className="font-bold text-blue-600">{a.montantBrut?.toLocaleString()} FCFA</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* MODAL PAIEMENT/STATUT */}
+      {/* MODAL */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-md dark:bg-gray-800 dark:text-gray-100">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="text-lg dark:text-gray-100">Confirmer le paiement et le statut</DialogTitle>
+            <DialogTitle>Mettre à jour la commande</DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-4 mt-2">
-            {/* Montant payé */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                Montant payé (max: {resteAPayer.toLocaleString()} FCFA)
-              </label>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold">Encaisser (FCFA)</label>
               <Input
                 type="number"
-                placeholder="Montant payé..."
                 value={montantActuel}
-                min={0}
-                onChange={(e) => {
-                  const valeur = Number(e.target.value);
-                  if (valeur > resteAPayer) {
-                    setShowMontantWarning(true);
-                    setMontantActuel(resteAPayer.toString());
-                    setTimeout(() => setShowMontantWarning(false), 3000);
-                  } else {
-                    setShowMontantWarning(false);
-                    setMontantActuel(e.target.value);
-                  }
-                }}
-                className="dark:bg-gray-700 dark:text-white"
+                onChange={(e) => setMontantActuel(e.target.value)}
+                className={!montantValide ? "border-red-500" : ""}
               />
-              {showMontantWarning && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
-                  <span className="text-lg">⚠️</span>
-                  <span>
-                    Le montant payé ne peut pas dépasser le reste à payer.
-                    <br />
-                    <strong>Montant ajusté à : {resteAPayer.toLocaleString()} FCFA</strong>
-                  </span>
-                </div>
-              )}
+              <p className="text-[10px] text-muted-foreground text-right italic">Maximum : {resteAPayer} FCFA</p>
             </div>
-
-            {/* Reliquat 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                Reliquat (optionnel)
-              </label>
-              <Input
-                type="number"
-                placeholder="Montant du reliquat..."
-                value={reliquat || ""}
-                min={0}
-                onChange={(e) => setReliquat(Number(e.target.value))}
-                className="dark:bg-gray-700 dark:text-white"
-              />
-              {reliquat > 0 && (
-                <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                  Ce reliquat sera conservé pour le client.
-                </div>
-              )}
-            </div>
-            */}
-
-            {/* Statut */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                Statut commande
-              </label>
-              <Select value={nouveauStatut} onValueChange={(v) => setNouveauStatut(v as "EN_COURS" | "LIVREE")}>
-                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white">
-                  <SelectValue placeholder="Sélectionner le statut" />
+            <div className="space-y-2">
+              <label className="text-sm font-bold">Statut</label>
+              <Select value={nouveauStatut} onValueChange={(v: StatutCommande) => setNouveauStatut(v)}>
+                <SelectTrigger>
+                  <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-gray-700 dark:text-white">
+                <SelectContent>
                   <SelectItem value="EN_COURS">EN COURS</SelectItem>
                   <SelectItem value="LIVREE">LIVRÉE</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-
-          {/* Boutons */}
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setShowModal(false)} className="dark:border-gray-600 dark:text-gray-100">
-              Annuler
-            </Button>
-            <Button
-              className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white"
-              disabled={!montantValide}
-              onClick={handleValiderPaiement}
-            >
-              Valider
-            </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setShowModal(false)}>Annuler</Button>
+            <Button className="flex-1 bg-green-600" disabled={!montantValide} onClick={handleValiderPaiement}>Valider</Button>
           </div>
         </DialogContent>
       </Dialog>

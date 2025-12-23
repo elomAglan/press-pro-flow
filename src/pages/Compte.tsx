@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Edit, Save, UserPlus, X, User } from "lucide-react";
+import { Trash2, Edit, Save, UserPlus, X, User, ShieldCheck, Mail, Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { signup, getComptes, updateCompte, deleteCompte } from "@/services/auth.service.ts";
@@ -25,8 +25,8 @@ export default function Compte() {
   const [roleValue, setRoleValue] = useState("COMPTOIR");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Récupérer le rôle depuis localStorage
   const role = localStorage.getItem("role") || "COMPTOIR";
   const isAdmin = role === "ADMIN" || role === "ADMINISTRATEUR";
 
@@ -35,11 +35,14 @@ export default function Compte() {
   }, []);
 
   const fetchUsers = async () => {
+    setIsLoading(true);
     try {
       const data = await getComptes();
       setUsers(data);
     } catch (err) {
       console.error("Erreur récupération comptes :", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -58,11 +61,9 @@ export default function Compte() {
     setRoleValue(user.role);
     setEditingId(user.id);
     setIsAddingUser(false);
-    setError("");
     setIsDialogOpen(true);
   };
 
-  
   const handleAdd = () => {
     if (!isAdmin) return;
     resetForm();
@@ -72,26 +73,21 @@ export default function Compte() {
 
   const handleSave = async () => {
     if (!isAdmin) return;
-
     try {
       setError("");
       if (!email) return setError("L'email est requis");
 
-      let response: UserType | null = null;
       if (isAddingUser) {
         if (!password) return setError("Le mot de passe est requis");
-        response = await signup(email, password, roleValue);
-        if (response) setUsers(prev => [...prev, response]);
+        await signup(email, password, roleValue);
       } else {
         if (!editingId) return setError("ID utilisateur manquant");
-        response = await updateCompte(editingId, email, password, roleValue);
-        if (response)
-          setUsers(prev => prev.map(u => (u.id === editingId ? response! : u)));
+        await updateCompte(editingId, email, password, roleValue);
       }
 
       resetForm();
       setIsDialogOpen(false);
-      await fetchUsers();
+      fetchUsers();
     } catch (err: any) {
       setError(err.message || "Erreur lors de la sauvegarde");
     }
@@ -99,129 +95,184 @@ export default function Compte() {
 
   const handleDelete = async (id: number) => {
     if (!isAdmin) return;
+    if (!window.confirm("Voulez-vous vraiment supprimer cet utilisateur ?")) return;
     try {
-      if (!window.confirm("Voulez-vous vraiment supprimer cet utilisateur ?")) return;
       await deleteCompte(id);
-      setUsers(prev => prev.filter(u => u.id !== id));
+      fetchUsers();
     } catch (err) {
       console.error("Erreur suppression :", err);
     }
   };
 
-  const closeDialog = () => {
-    setIsDialogOpen(false);
-    resetForm();
-  };
-
   return (
-    <div className="max-w-6xl mx-auto mt-10 px-4 space-y-8">
-      {/* Modification : text-center et justify-center retirés pour un alignement à gauche */}
-      <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-        <User size={30} className="text-blue-600" /> Gestion des Comptes
-      </h1>
+    <div className="h-screen flex flex-col p-4 md:p-8 space-y-6 bg-white dark:bg-gray-950 overflow-hidden max-w-7xl mx-auto">
+      
+      {/* HEADER SECTION */}
+      <div className="flex-none flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
+              <User size={24} />
+            </div>
+            Gestion des Comptes
+          </h1>
+          <p className="text-muted-foreground text-sm">{users.length} utilisateurs enregistrés</p>
+        </div>
 
-      <Card className="p-6 shadow-xl">
-        <Table>
-          <TableCaption>Liste des comptes utilisateurs</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Email</TableHead>
-              <TableHead>Mot de passe</TableHead>
-              <TableHead>Rôle</TableHead>
-              {isAdmin && <TableHead className="text-right w-[150px]">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
+        {isAdmin && (
+          <Button 
+            onClick={handleAdd} 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+          >
+            <UserPlus size={20} /> Ajouter un compte
+          </Button>
+        )}
+      </div>
 
-          <TableBody>
-            {users.map(user => {
-              const userRole = user.role.toUpperCase();
-              return (
-                <TableRow key={user.id}>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell><span className="text-gray-500 italic">••••••••</span></TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      userRole === "ADMIN" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
-                    }`}>
-                      {userRole === "ADMIN" ? "Administrateur" : "Comptoir"}
-                    </span>
-                  </TableCell>
-
-                  {isAdmin && (
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="icon" onClick={() => handleEdit(user)} title="Modifier">
-                          <Edit size={16} className="text-yellow-500" />
+      {/* ZONE SCROLLABLE */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin pr-1 -mr-1">
+        {isLoading ? (
+          <div className="flex justify-center py-20 animate-pulse text-blue-600">Chargement des comptes...</div>
+        ) : (
+          <>
+            {/* VUE MOBILE (Cartes) */}
+            <div className="grid grid-cols-1 gap-4 md:hidden pb-10">
+              {users.map(user => (
+                <div key={user.id} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
+                        <Mail size={18} className="text-gray-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900 dark:text-gray-100 truncate max-w-[150px]">{user.email}</h3>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                          user.role.toUpperCase() === "ADMIN" ? "bg-red-100 text-red-600 dark:bg-red-900/30" : "bg-green-100 text-green-600 dark:bg-green-900/30"
+                        }`}>
+                          {user.role}
+                        </span>
+                      </div>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(user)} className="text-indigo-600 h-8 w-8">
+                          <Edit size={16} />
                         </Button>
-
-                        {userRole !== "ADMIN" && (
-                          <Button variant="outline" size="icon" onClick={() => handleDelete(user.id)} title="Supprimer">
-                            <Trash2 size={16} className="text-red-500" />
+                        {user.role.toUpperCase() !== "ADMIN" && (
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(user.id)} className="text-red-600 h-8 w-8">
+                            <Trash2 size={16} />
                           </Button>
                         )}
                       </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </Card>
-
-      {isAdmin && (
-        <div className="fixed bottom-6 right-6">
-          <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg p-4 rounded-full flex items-center gap-2">
-            <UserPlus size={20} /> Ajouter un compte
-          </Button>
-        </div>
-      )}
-
-      {isAdmin && (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>
-                {isAddingUser ? "Ajouter un nouvel utilisateur" : `Modifier : ${email}`}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
-
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1" placeholder="Adresse email" />
-              </div>
-
-              <div>
-                <Label htmlFor="password">
-                  Mot de passe {!isAddingUser && <span className="text-gray-500 text-sm">(optionnel)</span>}
-                </Label>
-                <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} className="mt-1" placeholder={isAddingUser ? "Mot de passe initial" : "Laisser vide pour ne pas changer"} />
-              </div>
-
-              <div>
-                <Label htmlFor="role">Rôle</Label>
-                <Select value={roleValue} onValueChange={setRoleValue}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Sélectionner un rôle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ADMIN">Administrateur</SelectItem>
-                    <SelectItem value="COMPTOIR">Comptoir</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500 italic">
+                    <Lock size={12} /> Mot de passe protégé
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={closeDialog}><X size={16} className="mr-2" /> Annuler</Button>
-              <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700" disabled={!email || (isAddingUser && !password)}><Save size={16} className="mr-2" /> Enregistrer</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+            {/* VUE DESKTOP (Tableau) */}
+            <div className="hidden md:block rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+              <Table>
+                <TableHeader className="bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead className="font-bold">Utilisateur (Email)</TableHead>
+                    <TableHead className="font-bold">Sécurité</TableHead>
+                    <TableHead className="font-bold">Rôle</TableHead>
+                    {isAdmin && <TableHead className="text-right font-bold">Actions</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map(user => (
+                    <TableRow key={user.id} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
+                      <TableCell className="font-medium">{user.email}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-gray-400 text-xs italic">
+                          <Lock size={14} /> ••••••••
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                          user.role.toUpperCase() === "ADMIN" 
+                          ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" 
+                          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                        }`}>
+                          <ShieldCheck size={12} />
+                          {user.role.toUpperCase() === "ADMIN" ? "Administrateur" : "Comptoir"}
+                        </span>
+                      </TableCell>
+                      {isAdmin && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" size="icon" onClick={() => handleEdit(user)} className="h-8 w-8 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30">
+                              <Edit size={14} className="text-indigo-600" />
+                            </Button>
+                            {user.role.toUpperCase() !== "ADMIN" && (
+                              <Button variant="outline" size="icon" onClick={() => handleDelete(user.id)} className="h-8 w-8 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30">
+                                <Trash2 size={14} className="text-red-600" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* DIALOG MODAL */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] rounded-3xl dark:bg-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">
+              {isAddingUser ? "Créer un compte" : "Modifier le compte"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {error && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-2 rounded-xl text-sm italic">{error}</div>}
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-xs font-bold uppercase text-gray-500">Email</Label>
+              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} className="rounded-xl border-none bg-gray-100 dark:bg-gray-700" placeholder="exemple@mail.com" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-xs font-bold uppercase text-gray-500">
+                Mot de passe {!isAddingUser && <span className="lowercase font-normal">(laisser vide pour inchangé)</span>}
+              </Label>
+              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} className="rounded-xl border-none bg-gray-100 dark:bg-gray-700" placeholder="••••••••" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role" className="text-xs font-bold uppercase text-gray-500">Permissions</Label>
+              <Select value={roleValue} onValueChange={setRoleValue}>
+                <SelectTrigger className="rounded-xl border-none bg-gray-100 dark:bg-gray-700">
+                  <SelectValue placeholder="Rôle" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="ADMIN">Administrateur (Tous les droits)</SelectItem>
+                  <SelectItem value="COMPTOIR">Comptoir (Ventes uniquement)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-xl font-bold">Annuler</Button>
+            <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold px-8 shadow-lg shadow-blue-600/20">
+              <Save size={16} className="mr-2" /> 
+              {isAddingUser ? "Créer" : "Mettre à jour"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

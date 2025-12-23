@@ -8,12 +8,12 @@ import {
   Menu,
   X,
   LogOut,
-  Bell,
   ChevronDown,
   Sun,
   Moon,
   Archive,
   FileText,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getMyPressing } from "../services/pressing.service";
@@ -34,10 +34,6 @@ export function Sidebar({
   const role = localStorage.getItem("role") || "COMPTOIR";
   const isAdmin = role === "ADMIN" || role === "ADMINISTRATEUR";
 
-  // Logo par défaut (icône Shirt)
-  const DefaultLogo = () => <Shirt className="text-white h-6 w-6" />;
-
-  // Charger pressing
   useEffect(() => {
     const loadPressing = async () => {
       try {
@@ -47,7 +43,6 @@ export function Sidebar({
           setPressingName(p.nom || "");
         }
       } catch (e) {
-        console.error("Impossible de récupérer le pressing :", e);
         setPressingLogo(null);
         setPressingName("");
       }
@@ -55,194 +50,106 @@ export function Sidebar({
     loadPressing();
   }, []);
 
-  // Mode sombre
   useEffect(() => {
     if (darkMode) document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
   }, [darkMode]);
 
-  // -----------------------------
-  // Navigation filtrée par rôle
-  // -----------------------------
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Clients", href: "/clients", icon: Users },
-  { name: "Commandes", href: "/commandes", icon: ShoppingBag },
-  { name: "Pressing", href: "/parametres", icon: Shirt },
-
-  ...(isAdmin
-    ? [
-        { name: "Charge", href: "/charge", icon: Archive },
-        { name: "Rapport", href: "/rapports", icon: FileText },
-      ]
-    : []),
-];
+  const navigation = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Clients", href: "/clients", icon: Users },
+    { name: "Commandes", href: "/commandes", icon: ShoppingBag },
+    { name: "Pressing", href: "/parametres", icon: Shirt },
+    ...(isAdmin
+      ? [
+          { name: "Charges", href: "/charge", icon: Archive },
+          { name: "Rapports", href: "/rapports", icon: FileText },
+          { name: "Compte", href: "/compte", icon: UserCog }, // Corrigé : /compte
+        ]
+      : []),
+  ];
 
   const handleLogout = () => {
-    const sidebarContent = document.querySelector(".sidebar-content");
-    if (sidebarContent) sidebarContent.classList.add("opacity-0", "scale-95");
-    setTimeout(() => {
-      localStorage.clear();
-      navigate("/");
-    }, 300);
+    localStorage.clear();
+    navigate("/");
   };
 
-  const toggleTheme = () => setDarkMode((v) => !v);
-
-  // Component pour afficher le logo
   const PressingLogo = () => (
-    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/20 overflow-hidden shadow-lg">
+    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-white/20 overflow-hidden shadow-inner">
       {pressingLogo ? (
-        <img
-          src={pressingLogo}
-          alt={pressingName || "Logo Pressing"}
-          className="h-full w-full object-contain p-1"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
+        <img src={pressingLogo} alt="Logo" className="h-full w-full object-contain p-1" />
       ) : (
-        <DefaultLogo />
+        <Shirt className="text-white h-6 w-6" />
       )}
-    </div>
-  );
-
-  const QuickActions = () => (
-    <div className="lg:hidden p-4 border-t border-gray-200 dark:border-gray-700">
-      <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
-        Actions rapides
-      </h3>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => {
-            navigate("/commandes/nouveau");
-            setIsOpen(false);
-          }}
-          className="flex items-center justify-center gap-2 p-2 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30"
-        >
-          <ShoppingBag size={14} /> Nouvelle commande
-        </button>
-        <button
-          onClick={() => {
-            navigate("/clients/nouveau");
-            setIsOpen(false);
-          }}
-          className="flex items-center justify-center gap-2 p-2 text-sm bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30"
-        >
-          <Users size={14} /> Ajouter client
-        </button>
-      </div>
     </div>
   );
 
   return (
     <>
-      <style>{`
-        @keyframes fade-in { 
-          from { opacity: 0; } 
-          to { opacity: 1; } 
-        }
-      `}</style>
-
       {/* HEADER MOBILE */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-3">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl w-10 h-10 flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md overflow-hidden">
+          <div className="rounded-xl w-10 h-10 flex items-center justify-center bg-blue-600 text-white shadow-lg">
             <PressingLogo />
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-800 dark:text-white">
-              {pressingName || "PressPro"}
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">En ligne</p>
-          </div>
+          <h1 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter italic">
+            {pressingName || "PressPro"}
+          </h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-            <Bell size={18} className="text-gray-600 dark:text-gray-300" />
-          </button>
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            {isOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
+        <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+          {isOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </div>
 
-      {isOpen && (
-        <div
-          onClick={() => setIsOpen(false)}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-        />
-      )}
+      {isOpen && <div onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden" />}
 
       {/* SIDEBAR */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col shadow-xl transition-all duration-300 lg:translate-x-0 sidebar-content",
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          isCollapsed ? "w-20" : "w-64"
+          "fixed top-0 left-0 z-50 h-screen bg-white dark:bg-gray-950 border-r border-gray-100 dark:border-gray-900 flex flex-col transition-all duration-300 lg:translate-x-0 shadow-2xl",
+          isOpen ? "translate-x-0 w-72" : "-translate-x-full lg:translate-x-0",
+          isCollapsed ? "lg:w-20" : "lg:w-72"
         )}
       >
-        {/* HEADER */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-500 to-purple-600">
-          {!isCollapsed ? (
-            <div className="flex items-center gap-3 flex-1">
+        {/* LOGO SECTION */}
+        <div className="p-6">
+          <div className={cn("flex items-center gap-3", isCollapsed ? "justify-center" : "")}>
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
               <PressingLogo />
-              <div className="flex-1">
-                <h1 className="text-lg font-bold text-white">
-                  {pressingName || "PressPro"}
-                </h1>
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col">
+                <span className="font-black text-xl text-gray-900 dark:text-white leading-none tracking-tight">
+                  {pressingName.split(' ')[0] || "PRO"}
+                </span>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Management</span>
               </div>
-            </div>
-          ) : (
-            <div className="flex justify-center w-full">
-              <PressingLogo />
-            </div>
-          )}
-
-          {/* Toggle collapse */}
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg bg-white/20 text-white hover:bg-white/30"
-          >
-            <ChevronDown
-              size={16}
-              className={cn(
-                "transition-transform duration-300",
-                isCollapsed ? "-rotate-90" : "rotate-90"
-              )}
-            />
-          </button>
+            )}
+          </div>
         </div>
 
         {/* NAVIGATION */}
-        <nav className="flex-1 space-y-1 p-4 bg-gray-50 dark:bg-gray-800/50 overflow-y-auto">
+        <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto scrollbar-none">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}
+              onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all group relative",
+                  "flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all group relative",
                   isActive
-                    ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg border border-blue-100 dark:border-blue-800"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-md",
-                  isCollapsed ? "justify-center" : ""
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white",
+                  isCollapsed ? "justify-center px-0" : ""
                 )
               }
-              onClick={() => setIsOpen(false)}
             >
-              <item.icon
-                className={cn(
-                  "h-5 w-5 transition-transform group-hover:scale-110",
-                  isCollapsed ? "" : "flex-shrink-0"
-                )}
-              />
-              {!isCollapsed && <span className="flex-1">{item.name}</span>}
+              <item.icon size={22} className={cn("transition-transform group-hover:scale-110", isCollapsed ? "" : "min-w-[22px]")} />
+              {!isCollapsed && <span>{item.name}</span>}
+              
               {isCollapsed && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-lg">
+                <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-xl">
                   {item.name}
                 </div>
               )}
@@ -250,42 +157,40 @@ const navigation = [
           ))}
         </nav>
 
-        <QuickActions />
-
-        {/* FOOTER */}
-        <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3">
-          <div
-            className={cn(
-              "flex items-center gap-2",
-              isCollapsed ? "justify-center flex-col gap-1" : "justify-between"
-            )}
-          >
-            {/* DARK MODE */}
+        {/* FOOTER ACTIONS */}
+        <div className="p-4 mt-auto border-t border-gray-100 dark:border-gray-900">
+          <div className={cn("flex items-center gap-2", isCollapsed ? "flex-col" : "justify-between")}>
+            {/* THEME TOGGLE */}
             <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:text-blue-600 border border-gray-100 dark:border-gray-800 transition-all active:scale-95"
+              title="Changer de thème"
             >
-              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-
+            
             {/* LOGOUT */}
-            {!isCollapsed ? (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-              >
-                <LogOut size={16} /> Déconnexion
-              </button>
-            ) : (
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-              >
-                <LogOut size={16} />
-              </button>
-            )}
+            <button
+              onClick={handleLogout}
+              className={cn(
+                "p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-95",
+                isCollapsed ? "" : "flex-1 flex items-center justify-center gap-2 font-bold text-sm"
+              )}
+              title="Déconnexion"
+            >
+              <LogOut size={20} />
+              {!isCollapsed && <span>Quitter</span>}
+            </button>
           </div>
         </div>
+
+        {/* COLLAPSE TRIGGER (Desktop) */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="hidden lg:flex absolute -right-3 top-24 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 text-gray-400 hover:text-blue-600 shadow-md transition-all hover:scale-110"
+        >
+          <ChevronDown size={14} className={cn("transition-transform", isCollapsed ? "-rotate-90" : "rotate-90")} />
+        </button>
       </aside>
     </>
   );

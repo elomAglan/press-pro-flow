@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 import { getAllCommandes } from "../services/commande.service";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-
-import { List, Plus, Search, Calendar, FileText } from "lucide-react";
+import { 
+  List, Plus, Search, Calendar, FileText, 
+  ChevronRight, Filter, Package, FileSpreadsheet, Eye, ChevronDown 
+} from "lucide-react";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// ✅ Définition type Commande
 interface Commande {
   id: number;
   clientNom: string;
@@ -31,6 +33,14 @@ export default function Commandes() {
   const [filterStatus, setFilterStatus] = useState("");
   const navigate = useNavigate();
 
+  // --- NOUVELLE FONCTION DE FORMATAGE MANUELLE (ANTI-BUG PDF) ---
+  const formatNumber = (val: number | undefined) => {
+    if (val === undefined || val === null) return "0";
+    // On force la conversion en entier, puis on insere un espace clavier standard
+    // toutes les 3 positions en partant de la fin.
+    return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  };
+
   useEffect(() => {
     async function load() {
       try {
@@ -40,7 +50,6 @@ export default function Commandes() {
           montantNetTotal:
             c.montantsNets?.reduce((sum: number, m: number) => sum + m, 0) ?? 0,
         }));
-        // Trie décroissant pour avoir les plus récents en premier
         setCommandes(dataWithTotals.sort((a: any, b: any) => b.id - a.id));
       } catch (err) {
         console.error("Erreur récupération commandes:", err);
@@ -51,184 +60,180 @@ export default function Commandes() {
 
   const filtered = useMemo(() => {
     return commandes.filter((c) => {
-      const matchSearch = (c.clientNom ?? "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      const matchSearch = (c.clientNom ?? "").toLowerCase().includes(searchTerm.toLowerCase());
       const matchDate = !filterDate || c.dateReception === filterDate;
       const matchStatus = !filterStatus || c.statut === filterStatus;
       return matchSearch && matchDate && matchStatus;
     });
   }, [commandes, searchTerm, filterDate, filterStatus]);
 
-  const exportPDF = () => {
-    const doc = new jsPDF();
-
-    doc.setFontSize(18);
-    doc.text("Commandes Export PDF", 14, 20);
-    doc.setFontSize(12);
-    doc.text(`Exporté le : ${new Date().toLocaleString()}`, 14, 28);
-
-    let yOffset = 36;
-    if (filterDate) {
-      doc.text(`Date filtrée : ${filterDate}`, 14, yOffset);
-      yOffset += 8;
-    }
-    if (filterStatus) {
-      doc.text(`Statut filtré : ${filterStatus}`, 14, yOffset);
-      yOffset += 8;
-    }
-
-    const tableColumn = [
-      "N°",
-      "Client",
-      "Quantité totale",
-      "Montant Net",
-      "Date Livraison",
-      "Statut",
-    ];
-
-    const tableRows = filtered.map((c, index) => [
-      filtered.length - index, // Numérotation décroissante
-      c.clientNom ?? "",
-      c.articles?.length ?? 0,
-      c.montantNetTotal?.toLocaleString("fr-FR") ?? "0",
-      c.dateLivraison ?? "",
-      c.statut ?? "",
-    ]);
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: yOffset,
-      styles: { fontSize: 10 },
-    });
-
-    doc.save(`commandes_${Date.now()}.pdf`);
+  const getStatusColor = (status: string | undefined) => {
+    const s = status?.toLowerCase() || "";
+    if (s.includes("livre") || s.includes("termine") || s.includes("paye")) 
+      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+    if (s.includes("attente") || s.includes("cours")) 
+      return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+    if (s.includes("annule") || s.includes("rejete")) 
+      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
   };
 
-  const uniqueStatuses = Array.from(
-    new Set(commandes.map((c) => c.statut).filter(Boolean))
-  );
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("LISTE DES COMMANDES", 14, 20);
+    
+    autoTable(doc, {
+      head: [["N.", "Client", "Articles", "Total (FCFA)", "Livraison", "Statut"]],
+      body: filtered.map((c, i) => [
+        filtered.length - i,
+        c.clientNom ?? "",
+        c.articles?.length ?? 0,
+        formatNumber(c.montantNetTotal), // Utilisation de la nouvelle fonction manuelle
+        c.dateLivraison ?? "",
+        c.statut ?? "",
+      ]),
+      startY: 30,
+      styles: { font: "helvetica", fontSize: 9 },
+      headStyles: { fillColor: [59, 130, 246] },
+      columnStyles: {
+        3: { halign: 'right' } // Aligne les montants a droite pour plus de proprete
+      }
+    });
+    
+    doc.save(`commandes.pdf`);
+  };
+
+  const exportExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(
+      filtered.map((c, i) => ({
+        "N.": filtered.length - i,
+        "Client": c.clientNom,
+        "Articles": c.articles?.length ?? 0,
+        "Montant (FCFA)": c.montantNetTotal,
+        "Livraison": c.dateLivraison,
+        "Statut": c.statut,
+      }))
+    );
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Commandes");
+    XLSX.writeFile(workbook, `commandes.xlsx`);
+  };
+
+  const uniqueStatuses = Array.from(new Set(commandes.map((c) => c.statut).filter(Boolean)));
 
   return (
-    <div className="p-6 space-y-6 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
+    <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
+      
       {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <List className="text-blue-600 dark:text-blue-400" />
-          Commandes
-        </h1>
+      <div className="p-4 md:p-8 pb-4 space-y-6 flex-none">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <List className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight dark:text-white">Commandes</h1>
+              <p className="text-sm text-muted-foreground">{filtered.length} commande(s) filtrees</p>
+            </div>
+          </div>
 
-        <div className="flex gap-2">
-          <Button
-            className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white flex items-center gap-2"
-            onClick={exportPDF}
-          >
-            <FileText className="h-4 w-4" /> Exporter PDF
-          </Button>
-
-          <Button
-            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white flex items-center gap-2"
-            onClick={() => navigate("/commandes/nouvelle")}
-          >
-            <Plus className="h-4 w-4" /> Nouvelle Commande
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="h-10 border-gray-200" onClick={exportPDF}>
+              <FileText className="h-4 w-4 mr-2 text-red-500" /> PDF
+            </Button>
+            <Button variant="outline" size="sm" className="h-10 border-gray-200" onClick={exportExcel}>
+              <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" /> Excel
+            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white h-10" onClick={() => navigate("/commandes/nouvelle")}>
+              <Plus className="h-4 w-4 mr-2" /> Nouvelle Commande
+            </Button>
+          </div>
         </div>
+
+        {/* FILTERS CARD */}
+        <Card className="p-4 shadow-sm border-gray-200 dark:border-gray-800">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un client..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-11 bg-white dark:bg-gray-800"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+{/* Date Input avec icône visible */}
+<div className="relative group">
+  {/* L'icône est placée par-dessus l'input */}
+  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none group-focus-within:text-blue-600 transition-colors" />
+  <Input
+    type="date"
+    value={filterDate}
+    onChange={(e) => setFilterDate(e.target.value)}
+    className="pl-10 pr-2 h-11 bg-white dark:bg-gray-800 text-[11px] w-full focus-visible:ring-2 focus-visible:ring-blue-500"
+  />
+</div>
+              <div className="relative">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full h-11 pl-3 pr-8 rounded-md border border-input bg-white dark:bg-gray-800 text-[11px] appearance-none"
+                >
+                  <option value="">Tous les statuts</option>
+                  {uniqueStatuses.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              </div>
+            </div>
+          </div>
+        </Card>
       </div>
 
-      {/* FILTRES */}
-      <Card className="p-4 flex gap-4 dark:bg-gray-800">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-300" />
-          <Input
-            placeholder="Rechercher par client..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 dark:bg-gray-700 dark:text-white"
-          />
-        </div>
-
-        <div className="relative w-48">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-300" />
-          <Input
-            type="date"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            className="pl-10 dark:bg-gray-700 dark:text-white"
-          />
-        </div>
-
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="w-40 rounded-md border dark:bg-gray-700 dark:text-gray-100 px-3"
-          title="Filtrer par statut"
-        >
-          <option value="">Tous les statuts</option>
-          {uniqueStatuses.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </Card>
-
-      {/* TABLE */}
-      <Card className="overflow-hidden dark:bg-gray-800">
-        <div className="max-h-[500px] overflow-y-auto">
-          <table className="min-w-full border-collapse">
-            <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
-              <tr>
-                <th className="px-4 py-2 text-left dark:text-gray-100">#</th>
-                <th className="px-4 py-2 text-left dark:text-gray-100">Client</th>
-                <th className="px-4 py-2 text-left dark:text-gray-100">QT</th>
-                <th className="px-4 py-2 text-right dark:text-gray-100">Net</th>
-                <th className="px-4 py-2 text-left dark:text-gray-100">Livraison</th>
-                <th className="px-4 py-2 text-left dark:text-gray-100">Statut</th>
-                <th className="px-4 py-2 text-center dark:text-gray-100">Détails</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {filtered.length > 0 ? (
-                filtered.map((c, index) => (
-                  <tr
-                    key={c.id}
-                    className="border-t hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
-                    <td className="px-4 py-2">{filtered.length - index}</td>
-                    <td className="px-4 py-2">{c.clientNom ?? ""}</td>
-                    <td className="px-4 py-2">{c.articles?.length ?? 0}</td>
-                    <td className="px-4 py-2 text-right">
-                      {c.montantNetTotal?.toLocaleString("fr-FR") ?? "0"}
+      {/* TABLEAU */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
+        <div className="hidden md:block">
+          <Card className="overflow-hidden border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <table className="min-w-full">
+              <thead className="bg-gray-50 dark:bg-gray-800/80">
+                <tr>
+                  {["#", "Client", "Articles", "Montant Net", "Livraison", "Statut", "Action"].map((h) => (
+                    <th key={h} className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {filtered.map((c, index) => (
+                  <tr key={c.id} className="hover:bg-gray-50/50 cursor-pointer" onClick={() => navigate(`/commandes/${c.id}`)}>
+                    <td className="px-6 py-4 text-sm font-mono">{filtered.length - index}</td>
+                    <td className="px-6 py-4 text-sm font-bold">{c.clientNom}</td>
+                    <td className="px-6 py-4 text-sm">{c.articles?.length ?? 0} art.</td>
+                    <td className="px-6 py-4 text-sm font-bold text-blue-600">
+                      {formatNumber(c.montantNetTotal)} FCFA
                     </td>
-                    <td className="px-4 py-2">{c.dateLivraison ?? ""}</td>
-                    <td className="px-4 py-2">
-                      <Badge className="bg-blue-200 dark:bg-blue-700 text-blue-800 dark:text-blue-100">
-                        {c.statut ?? ""}
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{c.dateLivraison || "--/--"}</td>
+                    <td className="px-6 py-4">
+                      <Badge className={`${getStatusColor(c.statut)} border-none px-3 py-1`}>
+                        {c.statut}
                       </Badge>
                     </td>
-                    <td className="px-4 py-2 text-center">
-                      <Button
-                        className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 p-1"
-                        onClick={() => navigate(`/commandes/${c.id}`)}
-                      >
-                        <FileText size={16} />
+                    <td className="px-6 py-4">
+                      <Button size="sm" variant="secondary" className="bg-blue-50 text-blue-600">
+                        <Eye className="h-4 w-4 mr-2" /> Voir
                       </Button>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-500 dark:text-gray-300">
-                    Aucune commande trouvée
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </Card>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

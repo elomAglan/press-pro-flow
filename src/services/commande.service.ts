@@ -25,8 +25,8 @@ function mapCommande(c: any, parametres: any[]) {
       qte: c.quantites?.[idx] ?? c.qtes?.[idx] ?? 0,
       montantBrut: c.montantsBruts?.[idx] ?? 0,
       montantNet: c.montantsNets?.[idx] ?? 0,
-      kilo: c.poids?.[idx] ?? 0,        // ✅ Ajouter poids par article
-      tarifKiloId: c.tarifKiloIds?.[idx] ?? null // ✅ Ajouter l’ID du tarif kilo
+      kilo: c.poids?.[idx] ?? 0,
+      tarifKiloId: c.tarifKiloIds?.[idx] ?? null
     };
   }) ?? [];
 
@@ -35,7 +35,7 @@ function mapCommande(c: any, parametres: any[]) {
     articles,
     articleListe: articles.map((a) => a.article).join(", "),
     serviceListe: articles.map((a) => a.service).join(", "),
-    kiloTotal: articles.reduce((sum, a) => sum + a.kilo, 0), // ✅ Total kilos
+    kiloTotal: articles.reduce((sum, a) => sum + a.kilo, 0),
     montantNetTotal: articles.reduce((sum, a) => sum + a.montantNet, 0),
   };
 }
@@ -131,7 +131,6 @@ export async function updateStatutCommandeAvecPaiement(
     throw new Error(`Erreur serveur: ${text || res.statusText}`);
   }
 
-  // ⚡ Récupère le PDF généré
   const pdfBlob = await res.blob();
   const url = window.URL.createObjectURL(pdfBlob);
   window.open(url, "_blank");
@@ -145,7 +144,7 @@ export async function deleteCommande(id: number) {
   return apiFetch(`/api/commande/${id}`, { method: "DELETE" });
 }
 
-// ========================= STATS =========================
+// ========================= STATS KPI =========================
 export async function getCommandesTotalParJour() {
   return apiFetch("/api/commande/total", { method: "GET" });
 }
@@ -177,4 +176,38 @@ export async function getCAAnnuel() {
 
 export async function getCAImpayes() {
   return apiFetch("/api/commande/impayes", { method: "GET" });
+}
+
+// ========================= 📊 NOUVEAUX ENDPOINTS POUR GRAPHIQUES =========================
+
+/**
+ * 📊 Récupère le CA par mois (12 derniers mois)
+ * Format: [{ name: "Jan", CA: 50000, Cout: 15000 }, ...]
+ */
+export async function getCAParMois() {
+  return apiFetch("/api/commande/ca-par-mois", { method: "GET" });
+}
+
+/**
+ * 📊 Récupère le CA par semaine (7 derniers jours)
+ * Format: [{ name: "Lun", CA: 5000 }, ...]
+ */
+export async function getCAParSemaine() {
+  return apiFetch("/api/commande/ca-par-semaine", { method: "GET" });
+}
+
+/**
+ * 📊 Récupère la répartition des commandes par statut
+ * Format: [{ name: "EN_COURS", value: 10, color: "#3b82f6" }, ...]
+ */
+export async function getRepartitionStatuts() {
+  return apiFetch("/api/commande/repartition-statuts", { method: "GET" });
+}
+
+/**
+ * 📊 Récupère les articles les plus vendus
+ * Format: [{ name: "Chemise", value: 50 }, ...]
+ */
+export async function getTopArticles() {
+  return apiFetch("/api/commande/top-articles", { method: "GET" });
 }
