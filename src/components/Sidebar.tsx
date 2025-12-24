@@ -34,7 +34,7 @@ export function Sidebar({
   const [darkMode, setDarkMode] = useState(false);
   const [pressingLogo, setPressingLogo] = useState<string | null>(null);
   const [pressingName, setPressingName] = useState<string>("");
-  const [showSnow, setShowSnow] = useState(true);
+  const [showSnow, setShowSnow] = useState(false); // Changé à false par défaut
   const navigate = useNavigate();
 
   const role = localStorage.getItem("role") || "COMPTOIR";
@@ -114,7 +114,10 @@ export function Sidebar({
     document.body.appendChild(snowflakes);
 
     return () => {
-      document.body.removeChild(snowflakes);
+      const existingSnowflakes = document.querySelector(".snowflakes");
+      if (existingSnowflakes) {
+        document.body.removeChild(existingSnowflakes);
+      }
     };
   }, [showSnow]);
 
@@ -271,7 +274,12 @@ export function Sidebar({
         <div className="flex items-center gap-2">
           <button 
             onClick={toggleSnow}
-            className="p-2 rounded-lg bg-white/20 hover:bg-white/30"
+            className={cn(
+              "p-2 rounded-lg transition-all",
+              showSnow 
+                ? "bg-white/30" 
+                : "bg-white/20 hover:bg-white/30"
+            )}
           >
             <Snowflake size={18} className="text-white" />
           </button>
@@ -360,8 +368,18 @@ export function Sidebar({
             <NavLink
               key={item.name}
               to={item.href}
-              // Use a function to access isActive for both className and children
-              children={({ isActive }) => (
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all group relative",
+                  isActive
+                    ? "bg-gradient-to-r from-red-50 to-green-50 dark:from-red-900/30 dark:to-green-900/30 text-red-700 dark:text-red-300 shadow-lg border-2 border-yellow-400"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r from-red-50/50 to-green-50/50 dark:from-red-900/20 dark:to-green-900/20 hover:text-red-600 dark:hover:text-red-400 hover:shadow-md hover:border hover:border-yellow-300/30",
+                  isCollapsed ? "justify-center" : ""
+                )
+              }
+              onClick={() => setIsOpen(false)}
+            >
+              {({ isActive }) => (
                 <>
                   <div className="relative">
                     {Math.random() > 0.7 ? (
@@ -380,7 +398,7 @@ export function Sidebar({
                       />
                     )}
                     {/* Petit effet de neige sur l'icône */}
-                    {Math.random() > 0.5 && (
+                    {showSnow && Math.random() > 0.5 && (
                       <Snowflake className="absolute -top-1 -right-1 h-2 w-2 text-blue-300 animate-spin" />
                     )}
                   </div>
@@ -389,7 +407,7 @@ export function Sidebar({
                       {item.name}
                       {item.name === "Commandes" && (
                         <span className="absolute -top-2 -right-2 text-[8px] bg-red-500 text-white px-1 rounded-full animate-pulse">
-                         
+                          OFFRE
                         </span>
                       )}
                     </span>
@@ -399,27 +417,16 @@ export function Sidebar({
                       {item.name}
                     </div>
                   )}
+                  
                   {/* Effet de guirlande sur les liens actifs */}
                   {isActive && (
                     <div className="absolute -top-1 -left-1 -right-1 -bottom-1 rounded-xl border border-yellow-400/50 animate-pulse"></div>
                   )}
                 </>
               )}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all group relative animate-float",
-                  isActive
-                    ? "bg-gradient-to-r from-red-50 to-green-50 dark:from-red-900/30 dark:to-green-900/30 text-red-700 dark:text-red-300 shadow-lg border-2 border-yellow-400 animate-float"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r from-red-50/50 to-green-50/50 dark:from-red-900/20 dark:to-green-900/20 hover:text-red-600 dark:hover:text-red-400 hover:shadow-md hover:border hover:border-yellow-300/30",
-                  isCollapsed ? "justify-center" : ""
-                )
-              }
-              onClick={() => setIsOpen(false)}
-              style={{ animation: 'float 3s ease-in-out infinite' }}
-            />
+            </NavLink>
           ))}
           
-          {/* Carte de Noël spéciale */}
           
         </nav>
 
