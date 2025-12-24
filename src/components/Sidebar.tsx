@@ -407,7 +407,7 @@ export function Sidebar({
                       {item.name}
                       {item.name === "Commandes" && (
                         <span className="absolute -top-2 -right-2 text-[8px] bg-red-500 text-white px-1 rounded-full animate-pulse">
-                          OFFRE
+                         
                         </span>
                       )}
                     </span>
