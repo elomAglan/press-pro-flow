@@ -16,6 +16,7 @@ const SERVICE_OPTIONS = [
   "Lavage + sechage",
   "L+S + Repassage",
   "Lavage Express",
+  "Repassage simple",
 ];
 
 interface TarifFormModalProps {

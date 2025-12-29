@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Plus,
   Trash2,
@@ -8,6 +8,9 @@ import {
   Loader2,
   Percent,
   CreditCard,
+  Search, // 🔍 Ajouté pour l'icône de recherche
+  Check,  // ✅ Ajouté pour indiquer la sélection
+  User    // 👤 Ajouté pour l'icône client
 } from "lucide-react";
 import { getAllClients } from "../services/client.service";
 import { apiFetch } from "../services/api";
@@ -109,6 +112,11 @@ export default function NouvelleCommande({ onCancel }: any) {
   const [loading, setLoading] = useState(false);
   const [showMontantWarning, setShowMontantWarning] = useState(false);
 
+  // --- NOUVEAUX ÉTATS POUR LA RECHERCHE CLIENT ---
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showClientList, setShowClientList] = useState(false);
+  const clientDropdownRef = useRef<HTMLDivElement>(null);
+
   // Chargement initial
   useEffect(() => {
     getAllClients().then(setClients).catch(console.error);
@@ -116,6 +124,31 @@ export default function NouvelleCommande({ onCancel }: any) {
       .then((data: Parametre[]) => setTarifs(data))
       .catch(console.error);
   }, []);
+
+  // Fermer le dropdown si on clique ailleurs
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
+        setShowClientList(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // --- LOGIQUE DE FILTRAGE CLIENT ---
+  const filteredClients = useMemo(() => {
+    return clients.filter(c => 
+      c.nom.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      c.telephone.includes(searchTerm)
+    );
+  }, [clients, searchTerm]);
+
+  const handleSelectClient = (client: Client) => {
+    updateCommande({ clientId: client.id });
+    setSearchTerm(client.nom); // Affiche le nom dans l'input
+    setShowClientList(false);
+  };
 
   // Extraction des types d'articles uniques
   const typesArticles = useMemo(
@@ -267,7 +300,7 @@ export default function NouvelleCommande({ onCancel }: any) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="max-w-4xl mx-auto p-6 space-y-8 pb-20">
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-extrabold flex items-center gap-2">
@@ -294,19 +327,66 @@ export default function NouvelleCommande({ onCancel }: any) {
       {/* CLIENT ET DATES */}
       <Card className="space-y-5">
         <div className="grid md:grid-cols-3 gap-5">
-          <div className="space-y-1">
+          
+          {/* --- RECHERCHE CLIENT AMÉLIORÉE --- */}
+          <div className="space-y-1 relative" ref={clientDropdownRef}>
             <Label>Client</Label>
-            <Select
-              value={commande.clientId}
-              onChange={(v) => updateCommande({ clientId: v })}
-            >
-              <option value="">Sélectionner un client</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.telephone} — {c.nom}
-                </option>
-              ))}
-            </Select>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Rechercher nom ou tél..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e: any) => {
+                  setSearchTerm(e.target.value);
+                  setShowClientList(true);
+                  // Si l'utilisateur efface, on désélectionne
+                  if (e.target.value === "") updateCommande({ clientId: "" });
+                }}
+                onFocus={() => setShowClientList(true)}
+              />
+              {/* Bouton pour effacer la recherche */}
+              {searchTerm && (
+                 <button 
+                   onClick={() => { setSearchTerm(""); updateCommande({ clientId: "" }); }}
+                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                 >
+                   <X size={14} />
+                 </button>
+              )}
+            </div>
+
+            {/* DROPDOWN DES RÉSULTATS */}
+            {showClientList && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                {filteredClients.length > 0 ? (
+                  filteredClients.map((client) => (
+                    <div
+                      key={client.id}
+                      onClick={() => handleSelectClient(client)}
+                      className="px-4 py-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-600 flex justify-between items-center transition-colors border-b dark:border-gray-600 last:border-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full">
+                          <User size={16} className="text-gray-500" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{client.nom}</p>
+                          <p className="text-xs text-gray-500">{client.telephone}</p>
+                        </div>
+                      </div>
+                      {String(client.id) === String(commande.clientId) && (
+                        <Check size={16} className="text-green-600" />
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                    Aucun client trouvé
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">
