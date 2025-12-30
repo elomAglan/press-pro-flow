@@ -8,15 +8,25 @@ import {
   Charge,
 } from "../services/charge.service.ts";
 
+interface ChargeFormData {
+  description: string;
+  montant: number;
+  dateCharge: string;
+  pressingId: number;
+}
+
 const ChargeFormModal: React.FC<{
   chargeToEdit: Charge | null;
   onClose: () => void;
-  onSave: (data: { description: string; montant: number }, id?: number) => void;
-}> = ({ chargeToEdit, onClose, onSave }) => {
+  onSave: (data: ChargeFormData, id?: number) => void;
+  pressingId: number;
+}> = ({ chargeToEdit, onClose, onSave, pressingId }) => {
   const isEditing = Boolean(chargeToEdit);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ChargeFormData>({
     description: chargeToEdit?.description || "",
     montant: chargeToEdit?.montant || 0,
+    dateCharge: chargeToEdit?.dateCharge || new Date().toISOString().slice(0, 10),
+    pressingId,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,6 +84,19 @@ const ChargeFormModal: React.FC<{
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Date
+            </label>
+            <input
+              type="date"
+              name="dateCharge"
+              value={formData.dateCharge}
+              onChange={handleChange}
+              className="mt-1 block w-full border rounded-md p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            />
+          </div>
+
           <div className="flex justify-end gap-3">
             <button
               type="button"
@@ -95,7 +118,7 @@ const ChargeFormModal: React.FC<{
   );
 };
 
-export default function ChargePage() {
+export default function ChargePage({ pressingId }: { pressingId: number }) {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCharge, setEditingCharge] = useState<Charge | null>(null);
@@ -126,7 +149,6 @@ export default function ChargePage() {
 
   const handleDeleteCharge = async (id: number) => {
     if (!window.confirm("Supprimer cette charge ?")) return;
-
     try {
       await deleteCharge(id);
       await loadCharges();
@@ -136,13 +158,21 @@ export default function ChargePage() {
     }
   };
 
-  const handleSave = async (data: { description: string; montant: number }, id?: number) => {
+  const handleSave = async (data: ChargeFormData, id?: number) => {
     try {
+      const payload = {
+        description: data.description,
+        montant: data.montant,
+        dateCharge: data.dateCharge,
+        pressing: { id: data.pressingId },
+      };
+
       if (id) {
-        await updateCharge(id, data);
+        await updateCharge(id, payload);
       } else {
-        await createCharge(data);
+        await createCharge(payload);
       }
+
       await loadCharges();
     } catch (error) {
       console.error(error);
@@ -156,7 +186,6 @@ export default function ChargePage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <CreditCard /> Charges
         </h1>
-
         <button
           onClick={handleAdd}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-2 transition"
@@ -175,7 +204,6 @@ export default function ChargePage() {
               <th className="px-6 py-3 text-right dark:text-gray-100">Actions</th>
             </tr>
           </thead>
-
           <tbody>
             {charges.length > 0 ? (
               charges.map((charge) => (
@@ -192,7 +220,6 @@ export default function ChargePage() {
                     >
                       <Pencil size={16} />
                     </button>
-
                     <button
                       onClick={() => handleDeleteCharge(charge.id!)}
                       className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-700 rounded"
@@ -218,6 +245,7 @@ export default function ChargePage() {
           chargeToEdit={editingCharge}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
+          pressingId={pressingId}
         />
       )}
     </div>

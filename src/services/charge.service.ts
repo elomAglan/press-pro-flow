@@ -4,7 +4,8 @@ export interface Charge {
   id?: number;
   description: string;
   montant: number;
-  dateCharge?: string | null; // optionnel selon backend
+  dateCharge?: string | null;
+  pressing?: { id: number }; // ajouté pour le backend
 }
 
 /**
@@ -25,7 +26,7 @@ export async function getChargeById(id: number): Promise<Charge> {
  * 🔹 Créer une nouvelle charge
  */
 export async function createCharge(
-  charge: { description: string; montant: number }
+  charge: { description: string; montant: number; dateCharge?: string; pressing: { id: number } }
 ): Promise<Charge> {
   return await apiFetch("/api/charge", {
     method: "POST",
@@ -36,14 +37,13 @@ export async function createCharge(
 
 /**
  * 🔹 Mettre à jour une charge
- * ⚠️ change PUT → PATCH si ton backend attend PATCH
  */
 export async function updateCharge(
   id: number,
-  charge: { description: string; montant: number }
+  charge: { description: string; montant: number; dateCharge?: string; pressing?: { id: number } }
 ): Promise<Charge> {
   return await apiFetch(`/api/charge/${id}`, {
-    method: "PUT",
+    method: "PUT", // ou PATCH si ton backend attend PATCH
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(charge),
   });
