@@ -20,14 +20,16 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Tarifs from "./pages/Tarifs";
 import TarifsKilo from "./pages/TarifsKilo";
 import ChargePage from "./pages/ChargePage";
-import CommandePesage from "./pages/Commande-pesage"; // <-- Import ajouté
+import CommandePesage from "./pages/Commande-pesage"; 
+import LandingPage from "./pages/LandingPage";
+
 
 const queryClient = new QueryClient();
 
 // Wrapper pour passer onCancel()
 const NouvelleCommandeWrapper = () => {
   const navigate = useNavigate();
-  return <NouvelleCommande onCancel={() => navigate("/commandes")} />;
+  return <NouvelleCommande />;
 };
 
 // Helper pour les routes avec Layout
@@ -39,30 +41,33 @@ const App: React.FC = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          {/* 🔐 AUTH */}
-          <Route path="/" element={<Login />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+       <Routes>
+  {/* 🌍 LANDING */}
+  <Route path="/" element={<LandingPage />} />
 
-          {/* 🧭 APP PROTÉGÉE */}
-          <Route path="/dashboard" element={withLayout(<Dashboard />)} />
-          <Route path="/clients" element={withLayout(<Clients />)} />
-          <Route path="/commandes" element={withLayout(<Commandes />)} />
-          <Route path="/commandes/nouvelle" element={withLayout(<NouvelleCommandeWrapper />)} />
-          <Route path="/commandes/:id" element={withLayout(<CommandeDetail />)} />
-          <Route path="/commande-pesage" element={withLayout(<CommandePesage />)} />
-          <Route path="/charge" element={withLayout(<ChargePage />)} />
-          <Route path="/parametres" element={withLayout(<Parametres />)} />
-          <Route path="/tarifs" element={withLayout(<Tarifs />)} />
-          <Route path="/tarifs-kilo" element={withLayout(<TarifsKilo />)} />
-          <Route path="/rapports" element={withLayout(<Rapports />)} />
-          <Route path="/compte" element={withLayout(<Compte />)} />
+  {/* 🔐 AUTH */}
+  <Route path="/login" element={<Login />} />
+  <Route path="/signup" element={<Signup />} />
+  <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* 🚫 NOT FOUND */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+  {/* 🧭 APP PROTÉGÉE */}
+  <Route path="/dashboard" element={withLayout(<Dashboard />)} />
+  <Route path="/clients" element={withLayout(<Clients />)} />
+  <Route path="/commandes" element={withLayout(<Commandes />)} />
+  <Route path="/commandes/nouvelle" element={withLayout(<NouvelleCommandeWrapper />)} />
+  <Route path="/commandes/:id" element={withLayout(<CommandeDetail />)} />
+  <Route path="/commande-pesage" element={withLayout(<CommandePesage />)} />
+  <Route path="/charge" element={withLayout(<ChargePage pressingId={0} />)} />
+  <Route path="/parametres" element={withLayout(<Parametres />)} />
+  <Route path="/tarifs" element={withLayout(<Tarifs />)} />
+  <Route path="/tarifs-kilo" element={withLayout(<TarifsKilo />)} />
+  <Route path="/rapports" element={withLayout(<Rapports />)} />
+  <Route path="/compte" element={withLayout(<Compte />)} />
+
+  {/* 🚫 NOT FOUND */}
+  <Route path="*" element={<NotFound />} />
+</Routes>
+
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
