@@ -9,11 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
   List, Plus, Search, Calendar, FileText, 
-  ChevronRight, Filter, Package, FileSpreadsheet, Eye, ChevronDown 
+  FileSpreadsheet, Eye, ChevronDown, Package 
 } from "lucide-react";
 
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+// --- 1. REMPLACEMENT PAR PDFMAKE ---
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
+
+// Assignation des polices virtuelles (nécessaire pour pdfmake)
+(pdfMake as any).vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
 
 interface Commande {
   id: number;
@@ -33,12 +37,14 @@ export default function Commandes() {
   const [filterStatus, setFilterStatus] = useState("");
   const navigate = useNavigate();
 
-  // --- NOUVELLE FONCTION DE FORMATAGE MANUELLE (ANTI-BUG PDF) ---
+  // --- FORMATAGE FIABLE DES MONTANTS ---
   const formatNumber = (val: number | undefined) => {
-    if (val === undefined || val === null) return "0";
-    // On force la conversion en entier, puis on insere un espace clavier standard
-    // toutes les 3 positions en partant de la fin.
-    return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    if (val === undefined || val === null || isNaN(val)) return "0";
+    const rounded = Math.round(val);
+    return new Intl.NumberFormat("fr-FR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(rounded);
   };
 
   useEffect(() => {
@@ -78,31 +84,40 @@ export default function Commandes() {
     return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
   };
 
+  // --- 2. FONCTION EXPORT PDF CORRIGÉE (Sans séparateur d'espace/point) ---
   const exportPDF = () => {
-    const doc = new jsPDF();
-    
-    doc.setFont("helvetica", "bold");
-    doc.text("LISTE DES COMMANDES", 14, 20);
-    
-    autoTable(doc, {
-      head: [["N.", "Client", "Articles", "Total (FCFA)", "Livraison", "Statut"]],
-      body: filtered.map((c, i) => [
-        filtered.length - i,
-        c.clientNom ?? "",
-        c.articles?.length ?? 0,
-        formatNumber(c.montantNetTotal), // Utilisation de la nouvelle fonction manuelle
-        c.dateLivraison ?? "",
-        c.statut ?? "",
-      ]),
-      startY: 30,
-      styles: { font: "helvetica", fontSize: 9 },
-      headStyles: { fillColor: [59, 130, 246] },
-      columnStyles: {
-        3: { halign: 'right' } // Aligne les montants a droite pour plus de proprete
+    const body = [
+      ["N.", "Client", "Articles", "Total (FCFA)", "Livraison", "Statut"],
+      ...filtered.map((c, i) => [
+        (filtered.length - i).toString(),
+        c.clientNom || "",
+        (c.articles?.length || 0).toString(),
+        // MODIFICATION ICI : On utilise Math.round().toString() au lieu de formatNumber()
+        // Cela affiche "10000" au lieu de "10 000" ou "10.000"
+        Math.round(c.montantNetTotal || 0).toString(), 
+        c.dateLivraison || "",
+        c.statut || ""
+      ])
+    ];
+  
+    const docDefinition: any = {
+      content: [
+        { text: "LISTE DES COMMANDES", style: "header" },
+        {
+          table: {
+            headerRows: 1,
+            widths: ["auto", "*", "auto", "auto", "auto", "auto"],
+            body
+          },
+          layout: "lightHorizontalLines"
+        }
+      ],
+      styles: {
+        header: { fontSize: 16, bold: true, margin: [0, 0, 0, 10] }
       }
-    });
-    
-    doc.save(`commandes.pdf`);
+    };
+  
+    pdfMake.createPdf(docDefinition).download("commandes.pdf");
   };
 
   const exportExcel = () => {
@@ -166,17 +181,15 @@ export default function Commandes() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-{/* Date Input avec icône visible */}
-<div className="relative group">
-  {/* L'icône est placée par-dessus l'input */}
-  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none group-focus-within:text-blue-600 transition-colors" />
-  <Input
-    type="date"
-    value={filterDate}
-    onChange={(e) => setFilterDate(e.target.value)}
-    className="pl-10 pr-2 h-11 bg-white dark:bg-gray-800 text-[11px] w-full focus-visible:ring-2 focus-visible:ring-blue-500"
-  />
-</div>
+              <div className="relative group">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none group-focus-within:text-blue-600 transition-colors" />
+                <Input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="pl-10 pr-2 h-11 bg-white dark:bg-gray-800 text-[11px] w-full focus-visible:ring-2 focus-visible:ring-blue-500"
+                />
+              </div>
               <div className="relative">
                 <select
                   value={filterStatus}
@@ -195,8 +208,47 @@ export default function Commandes() {
         </Card>
       </div>
 
-      {/* TABLEAU */}
+      {/* TABLEAU (Desktop) ET LISTE (Mobile) */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
+        
+        {/* --- 3. VUE MOBILE (AJOUTÉE) --- */}
+        <div className="md:hidden space-y-3">
+          {filtered.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">Aucune commande trouvée</div>
+          ) : (
+            filtered.map((c) => (
+              <Card 
+                key={c.id} 
+                className="p-4 flex flex-col gap-3 active:scale-98 transition-transform"
+                onClick={() => navigate(`/commandes/${c.id}`)}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-gray-900 dark:text-white">{c.clientNom}</h3>
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                      <Calendar size={12} /> Livraison : {c.dateLivraison || "--/--"}
+                    </p>
+                  </div>
+                  <Badge className={`${getStatusColor(c.statut)} border-none px-2 py-0.5 text-[10px]`}>
+                    {c.statut}
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center justify-between border-t border-gray-100 pt-3 mt-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Package size={14} />
+                    <span>{c.articles?.length ?? 0} article(s)</span>
+                  </div>
+                  <span className="font-bold text-blue-600 text-lg">
+                    {formatNumber(c.montantNetTotal)} F
+                  </span>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* --- VUE DESKTOP (TABLEAU) --- */}
         <div className="hidden md:block">
           <Card className="overflow-hidden border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
             <table className="min-w-full">
@@ -229,6 +281,13 @@ export default function Commandes() {
                     </td>
                   </tr>
                 ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                      Aucune commande ne correspond à votre recherche.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </Card>

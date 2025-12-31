@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { CreditCard, Plus, Pencil, Trash2, X, Calendar, DollarSign, FileText } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
+import { CreditCard, Plus, Pencil, Trash2, X, ArrowLeft, Calendar, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   getAllCharges,
   createCharge,
@@ -8,89 +10,98 @@ import {
   Charge,
 } from "../services/charge.service.ts";
 
-// ========= MODAL FORMULAIRE =========
+interface ChargeFormData {
+  description: string;
+  montant: number;
+  dateCharge: string;
+  pressingId: number;
+}
+
+// --- MODAL COMPONENT (Style modernisé et Responsive) ---
 const ChargeFormModal: React.FC<{
   chargeToEdit: Charge | null;
   onClose: () => void;
-  onSave: (data: { description: string; montant: number }, id?: number) => void;
-}> = ({ chargeToEdit, onClose, onSave }) => {
+  onSave: (data: ChargeFormData, id?: number) => void;
+  pressingId: number;
+}> = ({ chargeToEdit, onClose, onSave, pressingId }) => {
   const isEditing = Boolean(chargeToEdit);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ChargeFormData>({
     description: chargeToEdit?.description || "",
     montant: chargeToEdit?.montant || 0,
+    dateCharge: chargeToEdit?.dateCharge || new Date().toISOString().slice(0, 10),
+    pressingId,
   });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "montant" ? Number(value) || 0 : value,
-    }));
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.description.trim()) return alert("Veuillez saisir une description.");
-    if (formData.montant <= 0) return alert("Le montant doit être supérieur à zéro.");
+    if (!formData.description.trim() || formData.montant <= 0) return;
     onSave(formData, chargeToEdit?.id);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center z-[100] p-0 md:p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-3xl p-6 w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800 animate-in slide-in-from-bottom duration-300">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold dark:text-gray-100">
-            {isEditing ? "Modifier la charge" : "Nouvelle charge"}
+          <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+            <CreditCard size={22} className="text-purple-600" />
+            {isEditing ? "Modifier Charge" : "Nouvelle Charge"}
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition">
-            <X size={20} />
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+            <X size={24} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase ml-1 mb-1">
-              Description
-            </label>
+        <form onSubmit={handleSubmit} className="space-y-5 pb-10 md:pb-0">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Description du frais</label>
             <input
               type="text"
               name="description"
-              autoFocus
               value={formData.description}
-              onChange={handleChange}
-              placeholder="Ex: Loyer, Electricité..."
-              className="w-full border-none bg-gray-50 dark:bg-gray-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500 dark:text-gray-100"
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              className="w-full rounded-xl bg-gray-50 dark:bg-gray-800 border-none p-4 text-sm font-bold focus:ring-2 focus:ring-purple-500 transition-all"
+              placeholder="Ex: Facture CIE, Loyer..."
+              required
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase ml-1 mb-1">
-              Montant (CFA)
-            </label>
-            <input
-              type="number"
-              name="montant"
-              value={formData.montant}
-              onChange={handleChange}
-              className="w-full border-none bg-gray-50 dark:bg-gray-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500 dark:text-gray-100 font-mono"
-            />
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Montant (FCFA)</label>
+            <div className="relative">
+              <input
+                type="number"
+                name="montant"
+                value={formData.montant || ''}
+                onChange={(e) => setFormData({...formData, montant: Number(e.target.value)})}
+                className="w-full rounded-xl bg-gray-50 dark:bg-gray-800 border-none p-4 pl-12 text-lg font-black text-purple-600 focus:ring-2 focus:ring-purple-500 transition-all"
+                placeholder="0"
+                required
+              />
+              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold shadow-lg shadow-purple-600/20 transition"
-            >
-              {isEditing ? "Enregistrer" : "Ajouter"}
-            </button>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Date de la dépense</label>
+            <div className="relative">
+              <input
+                type="date"
+                name="dateCharge"
+                value={formData.dateCharge}
+                onChange={(e) => setFormData({...formData, dateCharge: e.target.value})}
+                className="w-full rounded-xl bg-gray-50 dark:bg-gray-800 border-none p-4 pl-12 text-sm font-bold focus:ring-2 focus:ring-purple-500 transition-all"
+                required
+              />
+              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            </div>
+          </div>
+
+          <div className="pt-4 flex flex-col-reverse md:flex-row gap-3">
+            <Button type="button" variant="ghost" onClick={onClose} className="h-12 rounded-xl font-bold">Annuler</Button>
+            <Button type="submit" className="h-12 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black shadow-lg shadow-purple-600/20">
+              Valider
+            </Button>
           </div>
         </form>
       </div>
@@ -98,41 +109,43 @@ const ChargeFormModal: React.FC<{
   );
 };
 
-// ========= PAGE PRINCIPALE =========
-export default function ChargePage() {
+// --- MAIN COMPONENT ---
+export default function ChargePage({ pressingId }: { pressingId: number }) {
+  const navigate = useNavigate();
   const [charges, setCharges] = useState<Charge[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCharge, setEditingCharge] = useState<Charge | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const isAdmin = (localStorage.getItem("role") || "").includes("ADMIN");
 
   const loadCharges = async () => {
-    setIsLoading(true);
     try {
       const data = await getAllCharges();
       setCharges(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadCharges();
-  }, []);
+  useEffect(() => { loadCharges(); }, []);
 
-  const handleAdd = () => {
-    setEditingCharge(null);
-    setIsModalOpen(true);
-  };
-
-  const handleEdit = (charge: Charge) => {
-    setEditingCharge(charge);
-    setIsModalOpen(true);
+  const handleSave = async (data: ChargeFormData, id?: number) => {
+    try {
+      const payload = {
+        description: data.description,
+        montant: data.montant,
+        dateCharge: data.dateCharge,
+        pressing: { id: pressingId },
+      };
+      id ? await updateCharge(id, payload) : await createCharge(payload);
+      await loadCharges();
+    } catch (error) {
+      alert("Erreur lors de l’enregistrement.");
+    }
   };
 
   const handleDeleteCharge = async (id: number) => {
-    if (!window.confirm("Supprimer cette charge ?")) return;
+    if (!window.confirm("Supprimer cette dépense ?")) return;
     try {
       await deleteCharge(id);
       await loadCharges();
@@ -141,148 +154,128 @@ export default function ChargePage() {
     }
   };
 
-  const handleSave = async (data: { description: string; montant: number }, id?: number) => {
-    try {
-      if (id) {
-        await updateCharge(id, data);
-      } else {
-        await createCharge(data);
-      }
-      await loadCharges();
-    } catch (error) {
-      alert("Erreur lors de l’enregistrement.");
-    }
-  };
-
   return (
-    /* h-screen + flex-col + overflow-hidden pour bloquer le scroll du navigateur */
-    <div className="h-screen flex flex-col p-4 md:p-8 space-y-6 bg-white dark:bg-gray-950 overflow-hidden max-w-7xl mx-auto">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950 max-w-7xl mx-auto relative">
       
-      {/* HEADER SECTION (Fixe) */}
-      <div className="flex-none flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-3">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-xl">
-              <CreditCard size={24} />
+      {/* HEADER FIXE */}
+      <div className="flex-none p-4 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between border-b md:border-none border-gray-100 gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2.5 bg-gray-100 dark:bg-gray-900 rounded-xl active:scale-90 transition-all"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-600 text-white rounded-xl shadow-lg shadow-purple-600/20">
+              <CreditCard size={20} className="md:w-6 md:h-6" />
             </div>
-            Gestion des Charges
-          </h1>
-          <p className="text-muted-foreground text-sm">{charges.length} charges enregistrées</p>
+            <h1 className="text-xl md:text-3xl font-black tracking-tight">Gestion des Charges</h1>
+          </div>
         </div>
 
-        <button
-          onClick={handleAdd}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-all active:scale-95"
-        >
-          <Plus size={20} /> Ajouter une charge
-        </button>
-      </div>
-
-      {/* ZONE DE CONTENU SCROLLABLE (Interne) */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin pr-1 -mr-1">
-        {isLoading ? (
-          <div className="flex justify-center py-20 animate-pulse text-purple-600">Chargement...</div>
-        ) : (
-          <>
-            {/* VUE MOBILE (Cartes) */}
-            <div className="grid grid-cols-1 gap-4 md:hidden pb-10">
-              {charges.map((charge) => (
-                <div key={charge.id} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                        <FileText size={18} className="text-gray-400" />
-                      </div>
-                      <h3 className="font-bold text-gray-900 dark:text-gray-100">{charge.description}</h3>
-                    </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => handleEdit(charge)} className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg">
-                        <Pencil size={16} />
-                      </button>
-                      <button onClick={() => handleDeleteCharge(charge.id!)} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Montant</span>
-                      <span className="text-sm font-black text-purple-600">{Number(charge.montant).toLocaleString()} CFA</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date</span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                        <Calendar size={12} />
-                        {charge.dateCharge ? new Date(charge.dateCharge).toLocaleDateString("fr-FR") : "—"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* VUE DESKTOP (Tableau avec Header Collant) */}
-            <div className="hidden md:block rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-left">
-                <thead className="bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10 backdrop-blur-md">
-                  <tr>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Description</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Montant</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {charges.length > 0 ? (
-                    charges.map((charge) => (
-                      <tr key={charge.id} className="hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-colors">
-                        <td className="px-6 py-4 font-semibold text-gray-800 dark:text-gray-200">{charge.description}</td>
-                        <td className="px-6 py-4 font-black text-purple-600">{Number(charge.montant).toLocaleString()} CFA</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          <div className="flex items-center gap-2">
-                            <Calendar size={14} className="text-gray-400" />
-                            {charge.dateCharge ? new Date(charge.dateCharge).toLocaleDateString("fr-FR") : "—"}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex gap-1 justify-end">
-                            <button
-                              onClick={() => handleEdit(charge)}
-                              className="p-2 text-indigo-600 hover:bg-white dark:hover:bg-gray-800 shadow-sm hover:shadow rounded-lg transition"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteCharge(charge.id!)}
-                              className="p-2 text-red-600 hover:bg-white dark:hover:bg-gray-800 shadow-sm hover:shadow rounded-lg transition"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="text-center py-20 text-gray-400 italic">
-                        Aucune charge enregistrée pour le moment.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
+        {isAdmin && (
+          <Button
+            onClick={() => { setEditingCharge(null); setIsModalOpen(true); }}
+            className="hidden md:flex bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black shadow-lg shadow-purple-600/20"
+          >
+            <Plus size={18} className="mr-2" /> Nouvelle Charge
+          </Button>
         )}
       </div>
+
+      {/* ZONE DE LISTE */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-32">
+        
+        {/* VUE DESKTOP (TABLEAU) */}
+        <div className="hidden md:block rounded-3xl border border-gray-100 dark:border-gray-900 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 dark:bg-gray-800/50">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-400">Description</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-400">Date</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-400">Montant</th>
+                <th className="px-6 py-4 text-right text-[10px] font-black uppercase text-gray-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {charges.map((charge) => (
+                <tr key={charge.id} className="hover:bg-purple-50/30 transition-colors group">
+                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">{charge.description}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {charge.dateCharge ? new Date(charge.dateCharge).toLocaleDateString("fr-FR") : "—"}
+                  </td>
+                  <td className="px-6 py-4 font-black text-purple-600">
+                    {Number(charge.montant).toLocaleString()} <span className="text-[10px] font-normal">CFA</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingCharge(charge); setIsModalOpen(true); }} className="h-8 w-8 text-indigo-600"><Pencil size={14} /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteCharge(charge.id!)} className="h-8 w-8 text-red-600"><Trash2 size={14} /></Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* VUE MOBILE (CARDS) */}
+        <div className="md:hidden grid grid-cols-1 gap-3">
+          {charges.map((charge) => (
+            <div key={charge.id} className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm active:bg-gray-50 transition-colors">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <h3 className="font-black text-gray-900 dark:text-white text-lg leading-tight">{charge.description}</h3>
+                  <div className="flex items-center gap-1.5 text-gray-400">
+                    <Calendar size={12} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">
+                       {charge.dateCharge ? new Date(charge.dateCharge).toLocaleDateString("fr-FR") : "—"}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-black text-purple-600 leading-none">{Number(charge.montant).toLocaleString()} F</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-50 dark:border-gray-800">
+                <Button onClick={() => { setEditingCharge(charge); setIsModalOpen(true); }} variant="secondary" className="h-9 flex-1 rounded-xl font-bold text-xs bg-indigo-50 text-indigo-600 border-none">
+                  <Pencil size={14} className="mr-2" /> Modifier
+                </Button>
+                <Button onClick={() => handleDeleteCharge(charge.id!)} variant="secondary" className="h-9 flex-1 rounded-xl font-bold text-xs bg-red-50 text-red-600 border-none">
+                  <Trash2 size={14} className="mr-2" /> Supprimer
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {charges.length === 0 && (
+          <div className="py-20 text-center opacity-40">
+            <CreditCard size={48} className="mx-auto mb-4" />
+            <p className="font-bold italic uppercase text-xs tracking-widest">Aucune charge enregistrée</p>
+          </div>
+        )}
+      </div>
+
+      {/* BOUTON FLOTTANT (Mobile seulement) */}
+      {isAdmin && (
+        <button
+          onClick={() => { setEditingCharge(null); setIsModalOpen(true); }}
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-purple-600 text-white rounded-full shadow-2xl flex items-center justify-center active:scale-95 transition-transform z-50"
+        >
+          <Plus size={28} />
+        </button>
+      )}
 
       {/* MODAL */}
       {isModalOpen && (
         <ChargeFormModal
           chargeToEdit={editingCharge}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => { setIsModalOpen(false); setEditingCharge(null); }}
           onSave={handleSave}
+          pressingId={pressingId}
         />
       )}
     </div>

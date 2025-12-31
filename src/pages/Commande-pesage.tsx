@@ -1,5 +1,8 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Trash2, X, ShoppingCart, Scale, Percent, CreditCard, Loader2 } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import {
+  Plus, Trash2, X, ShoppingCart, Scale, Percent, CreditCard, Loader2,
+  Calendar, User, Check, Wallet, CheckCircle2, Receipt, ArrowLeft, Info, Search
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getAllClients } from "../services/client.service";
 import { createCommandeAvecPdf } from "../services/commande.service";
@@ -8,247 +11,171 @@ import { getAllTarifPoids } from "../services/tarifPoids.Service";
 // ---- TYPES ----
 type Client = { id: string; nom: string; telephone: string };
 type TarifKilo = { id: number; tranchePoids: string; service: string; prix: number };
-type ArticlePoids = {
-  id: string;
-  tarifKiloId: number;
-  tranchePoids: string;
-  service: string;
-  prix: number;
-  poids: number;
-};
-type CommandeState = {
-  clientId: string;
-  dateReception: string;
-  dateLivraison: string;
-  remiseGlobale: number;
-  montantPaye: number;
-};
-type DraftArticlePoids = {
-  tarifKiloId: number;
-  tranchePoids: string;
-  service: string;
-  prix: number;
-  poids: number;
-};
+type ArticlePoids = { id: string; tarifKiloId: number; tranchePoids: string; service: string; prix: number; poids: number; };
+type CommandeState = { clientId: string; dateReception: string; dateLivraison: string; remiseGlobale: number; montantPaye: number; };
+type DraftArticlePoids = { tarifKiloId: number; tranchePoids: string; service: string; prix: number; poids: number; };
 
-// ---- UTILS ----
-const getTodayString = () => new Date().toISOString().slice(0, 10);
-
-// Retourne la valeur maximale autorisée pour une tranche donnée
-const getMaxWeightForTranche = (tranche: string) => {
-  if (!tranche) return Infinity;
-  if (tranche.includes("1Kg-4Kg")) return 4;
-  if (tranche.includes("5Kg-9Kg")) return 9;
-  if (tranche.includes("10Kg-20Kg")) return 20;
-  if (tranche.includes("Supérieur à 20Kg")) return Infinity;
-  return Infinity;
-};
-
-// ---- UI COMPONENTS ----
-const Card = ({ children, className = "" }: any) => (
-  <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 ${className}`}>
-    {children}
-  </div>
+// ---- MINI-COMPOSANTS UI ----
+const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 ${className}`}>{children}</div>
 );
 
-const Label = ({ children }: any) => (
-  <label className="font-semibold text-sm text-gray-700 dark:text-gray-300">
-    {children}
+const Label = ({ children, icon: Icon }: { children: React.ReactNode; icon?: any }) => (
+  <label className="flex items-center gap-2 text-[10px] md:text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1.5">
+    {Icon && <Icon size={12} className="text-blue-500" />} {children}
   </label>
 );
 
-const Input = ({ className = "", ...props }: any) => (
-  <input
-    {...props}
-    className={`w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm transition bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 ${className}`}
-  />
+const Input = ({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) => (
+  <input {...props} className={`w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-3 py-2.5 text-sm font-bold focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all outline-none ${className}`} />
 );
 
-const Select = ({ value, onChange, children, disabled = false }: any) => (
-  <select
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    disabled={disabled}
-    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-  >
-    {children}
-  </select>
-);
+const Button = ({ children, variant = "primary", className = "", ...props }: any) => {
+  const variants: any = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700",
+    secondary: "bg-white border border-gray-300 text-gray-600 hover:bg-gray-50",
+    success: "bg-emerald-600 text-white hover:bg-emerald-700",
+  };
+  return (
+    <button {...props} className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${variants[variant]} ${className}`}>
+      {children}
+    </button>
+  );
+};
 
-const Button = ({ children, className = "", ...props }: any) => (
-  <button
-    {...props}
-    className={`px-4 py-2 rounded-lg text-white text-sm font-semibold shadow transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
-  >
-    {children}
-  </button>
-);
+// ---- SELECT RECHERCHABLE ----
+const SearchableSelect = ({ label, value, onChange, options, placeholder, icon: Icon, renderOption, disabled }: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState(value || "");
+  const containerRef = useRef<HTMLDivElement>(null);
 
-// ---- MAIN COMPONENT ----
+  useEffect(() => { setSearch(value); }, [value]);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!options) return [];
+    return options.filter((opt: any) => {
+      const text = typeof opt === "string" ? opt : (opt.service || opt.nom || "");
+      return text.toLowerCase().includes(search.toLowerCase());
+    });
+  }, [options, search]);
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSearch("");
+    onChange("", null);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <Label icon={Icon}>{label}</Label>
+      <div className="relative">
+        <Input placeholder={placeholder} className="pl-9 pr-8" value={search} disabled={disabled}
+          onChange={(e: any) => { setSearch(e.target.value); setIsOpen(true); if (!e.target.value) onChange("", null); }}
+          onFocus={() => !disabled && setIsOpen(true)}
+        />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        {value && !disabled && (
+          <button onClick={handleClear} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400"><X size={14} /></button>
+        )}
+      </div>
+      {isOpen && !disabled && filtered.length > 0 && (
+        <div className="absolute z-[60] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          {filtered.map((opt: any, i: number) => (
+            <div key={i} onClick={() => { 
+              const v = typeof opt === "string" ? opt : (opt.service || opt.nom);
+              onChange(v, opt); setSearch(v); setIsOpen(false);
+            }} className="px-4 py-3 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-0 border-gray-100 flex justify-between items-center">
+              {renderOption ? renderOption(opt) : <span className="font-bold text-gray-700">{opt}</span>}
+              {((typeof opt === "string" ? opt : (opt.service || opt.nom)) === value) && <Check size={14} className="text-blue-600" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---- COMPOSANT PRINCIPAL ----
 export default function CommandePesage() {
   const navigate = useNavigate();
-  const today = getTodayString();
+  const today = new Date().toISOString().slice(0, 10);
 
-  const [commande, setCommande] = useState<CommandeState>({
-    clientId: "",
-    dateReception: today,
-    dateLivraison: "",
-    remiseGlobale: 0,
-    montantPaye: 0,
-  });
-
-  const [draftArticlePoids, setDraftArticlePoids] = useState<DraftArticlePoids>({
-    tarifKiloId: 0,
-    tranchePoids: "",
-    service: "",
-    prix: 0,
-    poids: 0,
-  });
-
-  const [articlesPoids, setArticlesPoids] = useState<ArticlePoids[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [tarifsKilo, setTarifsKilo] = useState<TarifKilo[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [showMontantWarning, setShowMontantWarning] = useState(false);
-  const [showRemiseWarning, setShowRemiseWarning] = useState(false);
+  const [dateError, setDateError] = useState<string>("");
 
-  // Charger les clients et les tarifs au kilo depuis le backend
+  const [clients, setClients] = useState<Client[]>([]);
+  const [tarifsKilo, setTarifsKilo] = useState<TarifKilo[]>([]);
+  const [articlesPoids, setArticlesPoids] = useState<ArticlePoids[]>([]);
+  const [clientName, setClientName] = useState("");
+
+  const [commande, setCommande] = useState<CommandeState>({
+    clientId: "", dateReception: today, dateLivraison: "", remiseGlobale: 0, montantPaye: 0,
+  });
+
+  const [draft, setDraft] = useState<DraftArticlePoids>({
+    tarifKiloId: 0, tranchePoids: "", service: "", prix: 0, poids: 0,
+  });
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoadingData(true);
-        const [clientsData, tarifsData] = await Promise.all([
-          getAllClients(),
-          getAllTarifPoids(),
-        ]);
+        const [clientsData, tarifsData] = await Promise.all([getAllClients(), getAllTarifPoids()]);
         setClients(clientsData);
         setTarifsKilo(tarifsData);
-      } catch (error) {
-        console.error("Erreur lors du chargement des données:", error);
-        alert("❌ Impossible de charger les données nécessaires");
-      } finally {
-        setLoadingData(false);
-      }
+      } catch (error) { console.error(error); } 
+      finally { setLoadingData(false); }
     };
-
     fetchData();
   }, []);
 
-  // Obtenir les tranches de poids uniques disponibles
-  const tranchesDisponibles = useMemo(() => {
-    const tranches = [...new Set(tarifsKilo.map((t) => t.tranchePoids))];
-    return tranches.sort();
-  }, [tarifsKilo]);
-
-  // Filtrer les services disponibles selon la tranche sélectionnée
+  const tranchesDisponibles = useMemo(() => [...new Set(tarifsKilo.map((t) => t.tranchePoids))].sort(), [tarifsKilo]);
   const servicesDisponibles = useMemo(() => {
-    if (!draftArticlePoids.tranchePoids) return [];
-    return tarifsKilo
-      .filter((t) => t.tranchePoids === draftArticlePoids.tranchePoids)
-      .map((t) => ({ service: t.service, id: t.id, prix: t.prix }));
-  }, [draftArticlePoids.tranchePoids, tarifsKilo]);
+    if (!draft.tranchePoids) return [];
+    return tarifsKilo.filter((t) => t.tranchePoids === draft.tranchePoids).map((t) => ({ service: t.service, id: t.id, prix: t.prix }));
+  }, [draft.tranchePoids, tarifsKilo]);
 
-  // Calcul du montant total (le poids est informatif et n'affecte pas le prix)
-  const montantTotal = useMemo(
-    () => articlesPoids.reduce((sum, a) => sum + (a.prix ?? 0), 0),
-    [articlesPoids]
-  );
+  const tBrut = useMemo(() => articlesPoids.reduce((sum, a) => sum + (a.prix ?? 0), 0), [articlesPoids]);
+  const tNet = Math.max(0, tBrut - commande.remiseGlobale);
 
-  const montantNet = Math.max(0, montantTotal - (commande.remiseGlobale ?? 0));
-
-  const updateCommande = (updates: Partial<CommandeState>) => {
-    setCommande((prev) => ({ ...prev, ...updates }));
-  };
-
-  const updateDraftArticlePoids = (updates: Partial<DraftArticlePoids>) => {
-    setDraftArticlePoids((prev) => ({ ...prev, ...updates }));
-  };
-
-  const handleServiceChange = (serviceValue: string) => {
-    const tarif = servicesDisponibles.find((s) => s.service === serviceValue);
-    if (tarif) {
-      updateDraftArticlePoids({
-        service: tarif.service,
-        tarifKiloId: tarif.id,
-        prix: tarif.prix,
-      });
-    }
-  };
-
-  const handleAjouterArticlePoids = () => {
-    if (!draftArticlePoids.tranchePoids || !draftArticlePoids.service) return;
-    if (!draftArticlePoids.poids || draftArticlePoids.poids <= 0) return;
-
-    const maxAllowed = getMaxWeightForTranche(draftArticlePoids.tranchePoids);
-    if (Number.isFinite(maxAllowed) && draftArticlePoids.poids > maxAllowed) {
-      alert(`⚠️ Le poids ne doit pas dépasser ${maxAllowed} Kg`);
-      return;
-    }
-
-    const prixCalcule = draftArticlePoids.prix * draftArticlePoids.poids;
-
-    const nouvelArticle: ArticlePoids = {
+  const handleAdd = () => {
+    if (!draft.tranchePoids || !draft.service || !draft.poids) return;
+    setArticlesPoids([...articlesPoids, {
       id: crypto.randomUUID(),
-      tarifKiloId: draftArticlePoids.tarifKiloId,
-      tranchePoids: draftArticlePoids.tranchePoids,
-      service: draftArticlePoids.service,
-      prix: prixCalcule,        // ✅ prix réel
-      poids: draftArticlePoids.poids,
-    };
-
-    setArticlesPoids((prev) => [...prev, nouvelArticle]);
-
-    setDraftArticlePoids({
-      tarifKiloId: 0,
-      tranchePoids: "",
-      service: "",
-      prix: 0,
-      poids: 0,
-    });
+      tarifKiloId: draft.tarifKiloId,
+      tranchePoids: draft.tranchePoids,
+      service: draft.service,
+      prix: draft.prix * draft.poids,
+      poids: draft.poids,
+    }]);
+    setDraft({ tarifKiloId: 0, tranchePoids: "", service: "", prix: 0, poids: 0 });
   };
 
+  const validateDateLivraison = () => {
+    if (!commande.dateLivraison) { setDateError("Requise"); return false; }
+    if (commande.dateLivraison < commande.dateReception) { setDateError("Invalide"); return false; }
+    setDateError(""); return true;
+  };
 
-  const handleSupprimerArticlePoids = (id: string) => {
-    setArticlesPoids((prev) => prev.filter((a) => a.id !== id));
+  const handleOpenModal = () => {
+    if (!validateDateLivraison()) return;
+    if (articlesPoids.length === 0) { alert("Ajoutez au moins un article"); return; }
+    setIsModalOpen(true);
   };
 
   const handleSubmit = async () => {
-    // Validation
-    if (!commande.clientId) {
-      alert("⚠️ Veuillez sélectionner un client.");
-      return;
-    }
-
-    if (!commande.dateReception) {
-      alert("⚠️ Veuillez saisir la date de réception.");
-      return;
-    }
-
-    if (!commande.dateLivraison) {
-      alert("⚠️ Veuillez saisir la date de livraison.");
-      return;
-    }
-
-    if (articlesPoids.length === 0) {
-      alert("⚠️ Veuillez ajouter au moins un article à la commande.");
-      return;
-    }
-
-    if (commande.remiseGlobale > montantTotal) {
-      alert("⚠️ La remise ne peut pas dépasser le montant total de la commande.");
-      return;
-    }
-
-    if (commande.montantPaye > montantNet) {
-      alert("⚠️ Le montant payé ne peut pas dépasser le total net de la commande.");
-      return;
-    }
-
+    setLoading(true);
     try {
-      setLoading(true);
-
-      // Préparer le payload selon le format backend attendu
       const payload = {
         clientId: Number(commande.clientId),
         tarifKiloIds: articlesPoids.map((a) => a.tarifKiloId),
@@ -258,372 +185,155 @@ export default function CommandePesage() {
         dateLivraison: commande.dateLivraison,
         montantPaye: commande.montantPaye,
       };
-
-      console.log("📦 Données envoyées au backend:", JSON.stringify(payload, null, 2));
-
-      // Appel au backend avec génération du PDF
       const pdfBlob = await createCommandeAvecPdf(payload);
-
-      // Ouvrir le PDF dans un nouvel onglet
-      const url = window.URL.createObjectURL(pdfBlob);
-      window.open(url, "_blank");
-      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-
-      alert("✅ Commande par pesage créée avec succès !");
-
-      // Rediriger vers la liste des commandes
+      window.open(window.URL.createObjectURL(pdfBlob), "_blank");
       navigate("/commandes");
-    } catch (err: any) {
-      console.error("Erreur lors de la création:", err);
-      alert("❌ " + (err.message || "Erreur lors de la création de la commande"));
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { alert("Erreur"); } 
+    finally { setLoading(false); }
   };
 
-  const handleCancel = () => {
-    if (
-      articlesPoids.length > 0 &&
-      !window.confirm("Êtes-vous sûr de vouloir annuler ? Les données seront perdues.")
-    ) {
-      return;
-    }
-    navigate("/commandes");
-  };
-
-  // Afficher un loader pendant le chargement des données
-  if (loadingData) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="animate-spin mx-auto mb-4 text-blue-600" size={48} />
-          <p className="text-gray-600 dark:text-gray-400">Chargement des données...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loadingData) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* HEADER */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-            <ShoppingCart className="text-blue-600" />
-            Nouvelle commande par pesage
-          </h1>
-          <Button className="bg-red-600 hover:bg-red-700" onClick={handleCancel}>
-            <X size={18} /> Annuler
+    <div className="min-h-screen bg-[#F8FAFC] pb-48 md:pb-32">
+      {/* HEADER */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="bg-blue-600 p-2 rounded-lg text-white"><Scale size={18} /></div>
+            <h1 className="text-base md:text-lg font-black text-slate-800">Vente au Kilo</h1>
+          </div>
+          <Button variant="secondary" className="px-3" onClick={() => navigate("/commandes")}>
+            <ArrowLeft size={16} /> <span className="hidden sm:inline">Retour</span>
           </Button>
         </div>
-
-        {/* CLIENT ET DATES */}
-        <Card className="space-y-5">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            Informations client
-          </h2>
-          <div className="grid md:grid-cols-3 gap-5">
-            <div className="space-y-1">
-              <Label>Client *</Label>
-              <Select
-                value={commande.clientId}
-                onChange={(v) => updateCommande({ clientId: v })}
-              >
-                <option value="">Sélectionner un client</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.telephone} — {c.nom}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <Label>Date de réception *</Label>
-              <Input
-                type="date"
-                min={today}
-                value={commande.dateReception}
-                onChange={(e) => updateCommande({ dateReception: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Date de livraison *</Label>
-              <Input
-                type="date"
-                min={commande.dateReception || today}
-                value={commande.dateLivraison}
-                onChange={(e) => updateCommande({ dateLivraison: e.target.value })}
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* AJOUT PAR POIDS */}
-        <Card className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Scale size={20} className="text-blue-600" />
-            Ajouter par tranche de poids
-          </h2>
-
-          <div className="grid md:grid-cols-4 gap-4">
-            <div>
-              <Label>Tranche de poids *</Label>
-              <Select
-                value={draftArticlePoids.tranchePoids}
-                onChange={(v) =>
-                  updateDraftArticlePoids({
-                    tranchePoids: v,
-                    service: "",
-                    prix: 0,
-                    tarifKiloId: 0
-                  })
-                }
-              >
-                <option value="">Choisir une tranche...</option>
-                {tranchesDisponibles.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label>Service *</Label>
-              <Select
-                value={draftArticlePoids.service}
-                onChange={handleServiceChange}
-                disabled={!draftArticlePoids.tranchePoids}
-              >
-                <option value="">Choisir un service...</option>
-                {servicesDisponibles.map((s) => (
-                  <option key={s.id} value={s.service}>
-                    {s.service}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label>Poids (Kg) *</Label>
-              <Input
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={draftArticlePoids.poids || ""}
-                max={
-                  Number.isFinite(getMaxWeightForTranche(draftArticlePoids.tranchePoids))
-                    ? getMaxWeightForTranche(draftArticlePoids.tranchePoids)
-                    : undefined
-                }
-                onChange={(e) => {
-                  const raw = parseFloat(e.target.value) || 0;
-                  const max = getMaxWeightForTranche(draftArticlePoids.tranchePoids);
-                  if (Number.isFinite(max) && raw > max) {
-                    updateDraftArticlePoids({ poids: max });
-                    alert(`⚠️ Le poids ne doit pas dépasser ${max} Kg pour la tranche sélectionnée.`);
-                  } else {
-                    updateDraftArticlePoids({ poids: raw });
-                  }
-                }}
-                placeholder="Ex: 2.5"
-              />
-            </div>
-
-            <Button
-              className="bg-green-600 hover:bg-green-700 mt-6"
-              onClick={handleAjouterArticlePoids}
-              disabled={
-                !draftArticlePoids.tranchePoids ||
-                !draftArticlePoids.service ||
-                !draftArticlePoids.poids
-              }
-            >
-              <Plus size={16} /> Ajouter
-            </Button>
-          </div>
-
-          {draftArticlePoids.prix > 0 && draftArticlePoids.poids > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-              <div className="text-sm text-gray-700 dark:text-gray-300">
-                Prix unitaire : <strong>{draftArticlePoids.prix.toLocaleString()} FCFA</strong>
-                {" • "}
-                Poids (info) : <strong>{draftArticlePoids.poids} Kg</strong>
-                <div className="text-xs text-gray-500 mt-1">Le poids est informatif et n'affecte pas le prix.</div>
-              </div>
-            </div>
-          )}
-        </Card>
-
-        {/* LISTE DES ARTICLES PAR POIDS */}
-        <Card className="space-y-4">
-          <h3 className="font-bold text-gray-900 dark:text-white">
-            Articles ajoutés ({articlesPoids.length})
-          </h3>
-
-          {articlesPoids.length === 0 ? (
-            <div className="text-center py-8">
-              <Scale size={48} className="mx-auto text-gray-400 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">
-                Aucun article ajouté pour le moment
-              </p>
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                Sélectionnez une tranche de poids, un service et saisissez le poids
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                {articlesPoids.map((a, index) => (
-                  <div
-                    key={a.id}
-                    className="flex justify-between items-center bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold">
-                          {index + 1}
-                        </span>
-                        <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                          <Scale size={16} className="text-blue-600" />
-                          {a.tranchePoids}
-                        </p>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 ml-8">
-                        {a.service} • {a.poids} Kg • Prix : {a.prix.toLocaleString()} FCFA
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                        {a.prix.toLocaleString()} FCFA
-                      </span>
-                      <button
-                        onClick={() => handleSupprimerArticlePoids(a.id)}
-                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* RÉSUMÉ FINANCIER */}
-              <div className="space-y-3 border-t border-gray-200 dark:border-gray-600 pt-4 mt-4">
-                <div className="flex justify-between font-semibold text-lg text-gray-900 dark:text-white">
-                  <span>Total brut :</span>
-                  <span>{montantTotal.toLocaleString()} FCFA</span>
-                </div>
-
-                <div className="space-y-1">
-                  <Label>
-                    <div className="flex items-center gap-2">
-                      <Percent size={16} /> Remise (max: {montantTotal.toLocaleString()} FCFA)
-                    </div>
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={commande.remiseGlobale}
-                    onChange={(e) => {
-                      const value = +e.target.value;
-                      if (value > montantTotal) {
-                        setShowRemiseWarning(true);
-                        updateCommande({ remiseGlobale: montantTotal });
-                        setTimeout(() => setShowRemiseWarning(false), 3000);
-                      } else {
-                        setShowRemiseWarning(false);
-                        updateCommande({ remiseGlobale: value });
-                      }
-                    }}
-                    placeholder="0"
-                  />
-                  {showRemiseWarning && (
-                    <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
-                      <span className="text-lg">⚠️</span>
-                      <span>
-                        La remise ne peut pas dépasser le total brut.
-                        <br />
-                        <strong>Remise ajustée à : {montantTotal.toLocaleString()} FCFA</strong>
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-between font-bold text-2xl text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                  <span>Total net :</span>
-                  <span>{montantNet.toLocaleString()} FCFA</span>
-                </div>
-
-                <div className="space-y-1 mt-3">
-                  <Label>
-                    <div className="flex items-center gap-2">
-                      <CreditCard size={16} /> Montant payé (max: {montantNet.toLocaleString()} FCFA)
-                    </div>
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={commande.montantPaye}
-                    onChange={(e) => {
-                      const value = +e.target.value;
-                      if (value > montantNet) {
-                        setShowMontantWarning(true);
-                        updateCommande({ montantPaye: montantNet });
-                        setTimeout(() => setShowMontantWarning(false), 3000);
-                      } else {
-                        setShowMontantWarning(false);
-                        updateCommande({ montantPaye: value });
-                      }
-                    }}
-                    placeholder="0"
-                  />
-                  {showMontantWarning && (
-                    <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
-                      <span className="text-lg">⚠️</span>
-                      <span>
-                        Le montant payé ne peut pas dépasser le total net à payer.
-                        <br />
-                        <strong>Montant ajusté à : {montantNet.toLocaleString()} FCFA</strong>
-                      </span>
-                    </div>
-                  )}
-                  {commande.montantPaye > 0 && commande.montantPaye < montantNet && (
-                    <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
-                      ⚠️ Reste à payer : {(montantNet - commande.montantPaye).toLocaleString()} FCFA
-                    </p>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </Card>
-
-        {/* BOUTON DE SOUMISSION */}
-        <Button
-          className={`w-full py-3 text-lg ${loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          onClick={handleSubmit}
-          disabled={loading || articlesPoids.length === 0}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" size={20} />
-              Traitement en cours...
-            </>
-          ) : (
-            <>
-              <ShoppingCart size={20} />
-              Confirmer la commande ({articlesPoids.length}{" "}
-              {articlesPoids.length > 1 ? "articles" : "article"})
-            </>
-          )}
-        </Button>
       </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
+        {/* CLIENT & DATES */}
+        <Card className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SearchableSelect label="Client" placeholder="Sélectionner..." value={clientName} options={clients} icon={User}
+            onChange={(v: string, o: Client) => { setClientName(v); setCommande({ ...commande, clientId: o?.id || "" }); }}
+            renderOption={(c: Client) => (<div><p className="font-bold text-gray-800">{c.nom}</p><p className="text-[10px] text-gray-400">{c.telephone}</p></div>)}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label icon={Calendar}>Réception</Label><Input type="date" value={commande.dateReception} onChange={e => setCommande({...commande, dateReception: e.target.value})} /></div>
+            <div>
+              <Label icon={Calendar}>Livraison</Label>
+              <Input type="date" min={commande.dateReception} value={commande.dateLivraison} 
+                onChange={e => { setCommande({...commande, dateLivraison: e.target.value}); setDateError(""); }}
+                className={dateError ? "border-red-300 bg-red-50" : ""}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* AJOUT ARTICLE */}
+        <Card className="flex flex-col md:grid md:grid-cols-12 gap-4 bg-blue-50/40 border-blue-100">
+          <div className="md:col-span-4"><SearchableSelect label="Tranche de poids" placeholder="Choisir..." value={draft.tranchePoids} options={tranchesDisponibles} icon={Scale} onChange={(v: string) => setDraft({...draft, tranchePoids: v, service: "", tarifKiloId: 0, prix: 0})} /></div>
+          <div className="md:col-span-4"><SearchableSelect label="Service" placeholder="Choisir..." value={draft.service} options={servicesDisponibles} icon={Check} disabled={!draft.tranchePoids} onChange={(v: string, opt: any) => setDraft({...draft, service: v, tarifKiloId: opt?.id || 0, prix: opt?.prix || 0})} renderOption={(s: any) => <div className="flex justify-between w-full font-bold"><span>{s.service}</span><span className="text-blue-600">{s.prix}F/Kg</span></div>} /></div>
+          <div className="grid grid-cols-3 gap-2 md:col-span-4 md:flex md:items-end">
+            <div className="col-span-1"><Label icon={Info}>Poids</Label><Input type="number" step="0.1" value={draft.poids || ""} onChange={e => setDraft({...draft, poids: parseFloat(e.target.value) || 0})} /></div>
+            <Button variant="success" className="col-span-2 h-[42px] mt-auto md:flex-1" onClick={handleAdd} disabled={!draft.tranchePoids || !draft.service || !draft.poids}><Plus size={18} /> Ajouter</Button>
+          </div>
+        </Card>
+
+        {/* LISTE ARTICLES */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-black text-gray-400 uppercase px-1">Articles ({articlesPoids.length})</h3>
+          
+          {/* Mobile */}
+          <div className="md:hidden space-y-2">
+            {articlesPoids.map(a => (
+              <div key={a.id} className="bg-white p-4 rounded-xl border border-gray-200 flex justify-between items-center shadow-sm">
+                <div>
+                  <p className="font-bold text-slate-800">{a.tranchePoids}</p>
+                  <p className="text-xs text-blue-600 font-bold uppercase">{a.service} • {a.poids} Kg</p>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <span className="font-black text-slate-900">{a.prix.toLocaleString()} F</span>
+                  <button onClick={() => setArticlesPoids(articlesPoids.filter(it => it.id !== a.id))} className="p-2 text-red-500 bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop */}
+          <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase border-b">
+                <tr><th className="px-6 py-4">Tranche & Service</th><th className="px-6 py-4 text-center">Poids</th><th className="px-6 py-4 text-right">Total</th><th className="px-6 py-4 w-10"></th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {articlesPoids.map(a => (
+                  <tr key={a.id} className="hover:bg-gray-50/50">
+                    <td className="px-6 py-4"><span className="font-bold text-slate-800">{a.tranchePoids}</span> <span className="text-blue-500 font-medium ml-2">({a.service})</span></td>
+                    <td className="px-6 py-4 text-center font-black">{a.poids} Kg</td>
+                    <td className="px-6 py-4 text-right font-black">{a.prix.toLocaleString()} F</td>
+                    <td className="px-6 py-4 text-right"><button onClick={() => setArticlesPoids(articlesPoids.filter(it => it.id !== a.id))} className="text-gray-300 hover:text-red-500"><Trash2 size={16} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {articlesPoids.length === 0 && <div className="py-12 text-center text-gray-400 bg-white rounded-xl border-2 border-dashed border-gray-200">Aucun article au kilo</div>}
+        </div>
+      </div>
+
+      {/* BARRE D'ENCAISSEMENT PILULE (COMPACTE) */}
+      <div className="fixed bottom-4 left-0 right-0 z-40 px-4 md:left-auto md:right-6 md:bottom-6">
+        <div className="max-w-md mx-auto md:mx-0 bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10 p-3 md:p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 pl-2">
+              <div>
+                <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">Total à payer</p>
+                <p className="text-lg md:text-xl font-black text-white leading-none">
+                  {tNet.toLocaleString()} <span className="text-xs font-medium text-blue-400">F</span>
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={handleOpenModal} 
+              disabled={articlesPoids.length === 0 || !commande.dateLivraison}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm transition-all active:scale-95
+                ${(articlesPoids.length === 0 || !commande.dateLivraison) ? "bg-slate-800 text-slate-500" : "bg-blue-600 text-white shadow-lg shadow-blue-900/20"}`}
+            >
+              <span>Encaisser</span><CheckCircle2 size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL ENCAISSEMENT */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full h-[95vh] md:h-auto md:max-w-2xl rounded-t-3xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="bg-slate-900 px-6 py-5 text-white flex justify-between items-center">
+              <div className="flex items-center gap-2"><Wallet size={20} className="text-blue-400" /><h3 className="font-bold text-lg">Paiement Pesage</h3></div>
+              <button onClick={() => setIsModalOpen(false)} className="bg-white/10 p-2 rounded-full"><X size={20} /></button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="space-y-6">
+                  <div><Label icon={Percent}>Remise</Label><Input type="number" className="text-orange-600 text-xl py-3" value={commande.remiseGlobale} onChange={e => setCommande({...commande, remiseGlobale: Math.min(+e.target.value, tBrut)})} /></div>
+                  <div><Label icon={CreditCard}>Versé</Label><Input type="number" className="text-emerald-700 text-xl py-3 border-emerald-100 bg-emerald-50/50" value={commande.montantPaye} onChange={e => setCommande({...commande, montantPaye: Math.min(+e.target.value, tNet)})} /></div>
+                </div>
+                <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col items-center justify-center">
+                  <span className="text-xs font-black text-slate-400 uppercase mb-2">Net à percevoir</span>
+                  <div className="text-4xl font-black text-slate-900 mb-6">{tNet.toLocaleString()} F</div>
+                  <div className="w-full space-y-3 text-sm font-bold border-t pt-5">
+                    <div className="flex justify-between text-slate-500"><span>Brut</span><span>{tBrut.toLocaleString()} F</span></div>
+                    <div className="flex justify-between text-blue-600 text-lg border-t border-dashed pt-2"><span>Reste</span><span>{(tNet - commande.montantPaye).toLocaleString()} F</span></div>
+                  </div>
+                </div>
+              </div>
+              <button onClick={handleSubmit} disabled={loading} className="w-full py-4 rounded-2xl text-lg font-black bg-blue-600 text-white shadow-xl active:scale-95 transition-all">
+                {loading ? <Loader2 className="animate-spin" size={24} /> : <><Receipt size={24} /> VALIDER & IMPRIMER</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
