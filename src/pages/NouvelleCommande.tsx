@@ -8,9 +8,11 @@ import {
   Loader2,
   Percent,
   CreditCard,
-  Search, // 🔍 Ajouté pour l'icône de recherche
-  Check,  // ✅ Ajouté pour indiquer la sélection
-  User    // 👤 Ajouté pour l'icône client
+  Search,
+  Check,
+  User,
+  Tag,       // 🏷️ Pour l'article
+  Scissors   // ✂️ Pour le service
 } from "lucide-react";
 import { getAllClients } from "../services/client.service";
 import { apiFetch } from "../services/api";
@@ -55,7 +57,7 @@ const Card = ({ children, className = "" }: any) => (
 );
 
 const Label = ({ children }: any) => (
-  <label className="font-semibold text-sm text-gray-700 dark:text-gray-200">
+  <label className="font-semibold text-sm text-gray-700 dark:text-gray-200 mb-1 block">
     {children}
   </label>
 );
@@ -67,16 +69,6 @@ const Input = ({ className = "", ...props }: any) => (
   />
 );
 
-const Select = ({ value, onChange, children }: any) => (
-  <select
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-  >
-    {children}
-  </select>
-);
-
 const Button = ({ children, className = "", ...props }: any) => (
   <button
     {...props}
@@ -86,12 +78,120 @@ const Button = ({ children, className = "", ...props }: any) => (
   </button>
 );
 
+// ---- COMPOSANT RÉUTILISABLE : SEARCHABLE SELECT ----------------
+// C'est ici que la magie opère pour dynamiser n'importe quel champ
+const SearchableSelect = ({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled = false,
+  renderOption, // Fonction optionnelle pour personnaliser l'affichage dans la liste
+  icon: Icon = Search // Icône par défaut
+}: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState(value || "");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Synchroniser la recherche si la valeur externe change (ex: reset)
+  useEffect(() => {
+    setSearch(value);
+  }, [value]);
+
+  // Fermer si clic dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        // Si l'utilisateur a tapé un truc qui n'est pas sélectionné, on peut soit laisser, soit reset.
+        // Ici on laisse le texte pour permettre la recherche libre si besoin, ou on force la synchro.
+        if (!value) setSearch(""); 
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value]);
+
+  // Filtrage
+  const filteredOptions = useMemo(() => {
+    if (!options) return [];
+    return options.filter((opt: any) => {
+      const text = typeof opt === "string" ? opt : (opt.label || opt.service || opt.nom);
+      return text.toLowerCase().includes(search.toLowerCase());
+    });
+  }, [options, search]);
+
+  const handleSelect = (option: any) => {
+    // Si l'option est un string, on l'utilise directement, sinon on cherche la propriété pertinente
+    const valueToSet = typeof option === "string" ? option : (option.service || option.nom);
+    onChange(valueToSet, option); // On renvoie aussi l'objet complet si besoin
+    setSearch(valueToSet);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="space-y-1 relative" ref={containerRef}>
+      <Label>{label}</Label>
+      <div className="relative">
+        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Input
+          placeholder={placeholder}
+          className="pl-9 pr-8"
+          value={search}
+          disabled={disabled}
+          onChange={(e: any) => {
+            setSearch(e.target.value);
+            setIsOpen(true);
+            if (e.target.value === "") onChange("", null);
+          }}
+          onFocus={() => !disabled && setIsOpen(true)}
+        />
+        {search && !disabled && (
+          <button
+            onClick={() => {
+              setSearch("");
+              onChange("", null);
+              setIsOpen(true);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {isOpen && !disabled && filteredOptions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          {filteredOptions.map((opt: any, idx: number) => {
+            const isSelected = (typeof opt === "string" ? opt : (opt.service || opt.nom)) === value;
+            return (
+              <div
+                key={idx}
+                onClick={() => handleSelect(opt)}
+                className="px-4 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-600 flex justify-between items-center transition-colors border-b dark:border-gray-600 last:border-0"
+              >
+                {renderOption ? renderOption(opt) : (
+                  <span className="text-gray-900 dark:text-gray-100 font-medium">
+                    {typeof opt === "string" ? opt : (opt.service || opt.nom)}
+                  </span>
+                )}
+                {isSelected && <Check size={16} className="text-green-600" />}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ---- MAIN COMPONENT -------------------------------------------
 export default function NouvelleCommande({ onCancel }: any) {
   const navigate = useNavigate();
   const today = getTodayString();
 
-  // State principal propre et structuré
+  // State principal
   const [commande, setCommande] = useState<CommandeState>({
     clientId: "",
     dateReception: today,
@@ -112,43 +212,16 @@ export default function NouvelleCommande({ onCancel }: any) {
   const [loading, setLoading] = useState(false);
   const [showMontantWarning, setShowMontantWarning] = useState(false);
 
-  // --- NOUVEAUX ÉTATS POUR LA RECHERCHE CLIENT ---
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showClientList, setShowClientList] = useState(false);
-  const clientDropdownRef = useRef<HTMLDivElement>(null);
+  // --- RECHERCHE CLIENT ---
+  // On garde le state du client séparé pour gérer l'affichage du nom vs l'ID stocké
+  const [clientSearchName, setClientSearchName] = useState("");
 
-  // Chargement initial
   useEffect(() => {
     getAllClients().then(setClients).catch(console.error);
     apiFetch("/api/parametre")
       .then((data: Parametre[]) => setTarifs(data))
       .catch(console.error);
   }, []);
-
-  // Fermer le dropdown si on clique ailleurs
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
-        setShowClientList(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // --- LOGIQUE DE FILTRAGE CLIENT ---
-  const filteredClients = useMemo(() => {
-    return clients.filter(c => 
-      c.nom.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      c.telephone.includes(searchTerm)
-    );
-  }, [clients, searchTerm]);
-
-  const handleSelectClient = (client: Client) => {
-    updateCommande({ clientId: client.id });
-    setSearchTerm(client.nom); // Affiche le nom dans l'input
-    setShowClientList(false);
-  };
 
   // Extraction des types d'articles uniques
   const typesArticles = useMemo(
@@ -181,7 +254,7 @@ export default function NouvelleCommande({ onCancel }: any) {
 
   const montantNet = Math.max(0, montantTotal - commande.remiseGlobale);
 
-  // Handlers avec state propre
+  // Handlers
   const updateCommande = (updates: Partial<CommandeState>) => {
     setCommande((prev) => ({ ...prev, ...updates }));
   };
@@ -216,6 +289,7 @@ export default function NouvelleCommande({ onCancel }: any) {
     };
 
     setArticles((prev) => [...prev, nouvelArticle]);
+    // Reset partiel pour enchainer rapidement
     setDraftArticle({ type: "", service: "", quantite: 1 });
   };
 
@@ -224,40 +298,15 @@ export default function NouvelleCommande({ onCancel }: any) {
   };
 
   const handleSubmit = async () => {
-    // Validation détaillée avec messages spécifiques
-    if (!commande.clientId) {
-      alert("⚠️ Veuillez sélectionner un client.");
-      return;
-    }
-
-    if (!commande.dateReception) {
-      alert("⚠️ Veuillez saisir la date de réception.");
-      return;
-    }
-
-    if (!commande.dateLivraison) {
-      alert("⚠️ Veuillez saisir la date de livraison.");
-      return;
-    }
-
-    if (articles.length === 0) {
-      alert("⚠️ Veuillez ajouter au moins un article à la commande.");
-      return;
-    }
-
-    if (commande.remiseGlobale > montantTotal) {
-      alert("⚠️ La remise ne peut pas dépasser le montant total de la commande.");
-      return;
-    }
-
-    if (commande.montantPaye > montantNet) {
-      alert("⚠️ Le montant payé ne peut pas dépasser le total net de la commande.");
-      return;
-    }
+    if (!commande.clientId) return alert("⚠️ Veuillez sélectionner un client.");
+    if (!commande.dateReception) return alert("⚠️ Date de réception manquante.");
+    if (!commande.dateLivraison) return alert("⚠️ Date de livraison manquante.");
+    if (articles.length === 0) return alert("⚠️ Ajoutez au moins un article.");
+    if (commande.remiseGlobale > montantTotal) return alert("⚠️ Remise invalide.");
+    if (commande.montantPaye > montantNet) return alert("⚠️ Montant payé trop élevé.");
 
     try {
       setLoading(true);
-
       const body = {
         clientId: Number(commande.clientId),
         parametreIds: articles.map((a) => a.parametreId),
@@ -281,19 +330,15 @@ export default function NouvelleCommande({ onCancel }: any) {
         }
       );
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Erreur lors du téléchargement du PDF");
-      }
+      if (!response.ok) throw new Error("Erreur serveur");
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       window.open(url, "_blank");
       window.URL.revokeObjectURL(url);
-
       navigate("/commandes");
     } catch (err: any) {
-      alert(err.message || "Erreur lors de la création de la commande");
+      alert(err.message || "Erreur");
     } finally {
       setLoading(false);
     }
@@ -306,19 +351,11 @@ export default function NouvelleCommande({ onCancel }: any) {
         <h1 className="text-2xl font-extrabold flex items-center gap-2">
           <ShoppingCart className="text-blue-600" /> Nouvelle commande
         </h1>
-
         <div className="flex gap-2">
-          <Button
-            className="bg-gray-600 hover:bg-gray-700"
-            onClick={() => navigate("/commande-pesage")}
-          >
+          <Button className="bg-gray-600 hover:bg-gray-700" onClick={() => navigate("/commande-pesage")}>
             🏋️‍♂️ Commande par pesage
           </Button>
-
-          <Button
-            className="bg-red-600 hover:bg-red-700"
-            onClick={() => navigate("/commandes")}
-          >
+          <Button className="bg-red-600 hover:bg-red-700" onClick={() => navigate("/commandes")}>
             <X size={18} /> Annuler
           </Button>
         </div>
@@ -328,66 +365,24 @@ export default function NouvelleCommande({ onCancel }: any) {
       <Card className="space-y-5">
         <div className="grid md:grid-cols-3 gap-5">
           
-          {/* --- RECHERCHE CLIENT AMÉLIORÉE --- */}
-          <div className="space-y-1 relative" ref={clientDropdownRef}>
-            <Label>Client</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Rechercher nom ou tél..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e: any) => {
-                  setSearchTerm(e.target.value);
-                  setShowClientList(true);
-                  // Si l'utilisateur efface, on désélectionne
-                  if (e.target.value === "") updateCommande({ clientId: "" });
-                }}
-                onFocus={() => setShowClientList(true)}
-              />
-              {/* Bouton pour effacer la recherche */}
-              {searchTerm && (
-                 <button 
-                   onClick={() => { setSearchTerm(""); updateCommande({ clientId: "" }); }}
-                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                 >
-                   <X size={14} />
-                 </button>
-              )}
-            </div>
-
-            {/* DROPDOWN DES RÉSULTATS */}
-            {showClientList && (
-              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                {filteredClients.length > 0 ? (
-                  filteredClients.map((client) => (
-                    <div
-                      key={client.id}
-                      onClick={() => handleSelectClient(client)}
-                      className="px-4 py-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-600 flex justify-between items-center transition-colors border-b dark:border-gray-600 last:border-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full">
-                          <User size={16} className="text-gray-500" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{client.nom}</p>
-                          <p className="text-xs text-gray-500">{client.telephone}</p>
-                        </div>
-                      </div>
-                      {String(client.id) === String(commande.clientId) && (
-                        <Check size={16} className="text-green-600" />
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                    Aucun client trouvé
-                  </div>
-                )}
+          {/* CHAMP CLIENT DYNAMISÉ AVEC LE NOUVEAU COMPOSANT */}
+          <SearchableSelect
+            label="Client"
+            placeholder="Rechercher nom ou tél..."
+            value={clientSearchName}
+            options={clients}
+            icon={User}
+            onChange={(val: string, obj: Client | null) => {
+              setClientSearchName(val);
+              updateCommande({ clientId: obj ? obj.id : "" });
+            }}
+            renderOption={(c: Client) => (
+              <div>
+                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{c.nom}</p>
+                <p className="text-xs text-gray-500">{c.telephone}</p>
               </div>
             )}
-          </div>
+          />
 
           <div className="space-y-1">
             <Label>Date de réception</Label>
@@ -395,7 +390,7 @@ export default function NouvelleCommande({ onCancel }: any) {
               type="date"
               min={today}
               value={commande.dateReception}
-              onChange={(e) => updateCommande({ dateReception: e.target.value })}
+              onChange={(e: any) => updateCommande({ dateReception: e.target.value })}
             />
           </div>
 
@@ -405,7 +400,7 @@ export default function NouvelleCommande({ onCancel }: any) {
               type="date"
               min={commande.dateReception || today}
               value={commande.dateLivraison}
-              onChange={(e) => updateCommande({ dateLivraison: e.target.value })}
+              onChange={(e: any) => updateCommande({ dateLivraison: e.target.value })}
             />
           </div>
         </div>
@@ -417,52 +412,47 @@ export default function NouvelleCommande({ onCancel }: any) {
           <Shirt size={20} className="text-blue-600" /> Ajouter un article
         </h2>
 
-        <div className="grid md:grid-cols-4 gap-4">
-          <div>
-            <Label>Article</Label>
-            <Select
-              value={draftArticle.type}
-              onChange={(v) => updateDraftArticle({ type: v, service: "" })}
-            >
-              <option value="">Choisir...</option>
-              {typesArticles.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </Select>
-          </div>
+        <div className="grid md:grid-cols-4 gap-4 items-end">
+          
+          {/* CHAMP ARTICLE DYNAMISÉ */}
+          <SearchableSelect
+            label="Article"
+            placeholder="Ex: Chemise, Pantalon..."
+            value={draftArticle.type}
+            options={typesArticles} // Liste de strings simple
+            icon={Tag}
+            onChange={(val: string) => updateDraftArticle({ type: val, service: "" })} 
+          />
 
-          <div>
-            <Label>Service</Label>
-            <Select
-              value={draftArticle.service}
-              onChange={(v) => updateDraftArticle({ service: v })}
-              disabled={!draftArticle.type}
-            >
-              <option value="">Choisir...</option>
-              {servicesDisponibles.map((s) => (
-                <option key={s.id} value={s.service}>
-                  {s.service} - {s.prix.toLocaleString()} FCFA
-                </option>
-              ))}
-            </Select>
-          </div>
+          {/* CHAMP SERVICE DYNAMISÉ */}
+          <SearchableSelect
+            label="Service"
+            placeholder="Ex: Lavage, Repassage..."
+            value={draftArticle.service}
+            options={servicesDisponibles} // Liste d'objets {service, prix}
+            icon={Scissors}
+            disabled={!draftArticle.type}
+            onChange={(val: string) => updateDraftArticle({ service: val })}
+            renderOption={(s: any) => (
+              <div className="flex justify-between w-full">
+                <span className="font-medium text-gray-700 dark:text-gray-200">{s.service}</span>
+                <span className="text-blue-600 font-bold text-sm">{s.prix.toLocaleString()} FCFA</span>
+              </div>
+            )}
+          />
 
-          <div>
+          <div className="space-y-1">
             <Label>Quantité</Label>
             <Input
               type="number"
               min={1}
               value={draftArticle.quantite}
-              onChange={(e) =>
-                updateDraftArticle({ quantite: +e.target.value })
-              }
+              onChange={(e: any) => updateDraftArticle({ quantite: +e.target.value })}
             />
           </div>
 
           <Button
-            className="bg-green-600 hover:bg-green-700 mt-6"
+            className="bg-green-600 hover:bg-green-700 h-[38px]"
             onClick={handleAjouterArticle}
             disabled={!draftArticle.type || !draftArticle.service}
           >
@@ -510,6 +500,7 @@ export default function NouvelleCommande({ onCancel }: any) {
           ))
         )}
 
+        {/* RESTE DU CALCUL DU PRIX IDENTIQUE À AVANT... */}
         {articles.length > 0 && (
           <div className="space-y-3 border-t pt-3">
             <div className="flex justify-between font-semibold text-lg">
@@ -528,7 +519,7 @@ export default function NouvelleCommande({ onCancel }: any) {
                 min={0}
                 max={montantTotal}
                 value={commande.remiseGlobale}
-                onChange={(e) =>
+                onChange={(e: any) =>
                   updateCommande({ remiseGlobale: Math.min(+e.target.value, montantTotal) })
                 }
               />
@@ -542,14 +533,14 @@ export default function NouvelleCommande({ onCancel }: any) {
             <div className="space-y-1 mt-3">
               <Label>
                 <div className="flex items-center gap-2">
-                  <CreditCard size={16} /> Montant payé (max: {montantNet.toLocaleString()} FCFA)
+                  <CreditCard size={16} /> Montant payé
                 </div>
               </Label>
               <Input
                 type="number"
                 min={0}
                 value={commande.montantPaye}
-                onChange={(e) => {
+                onChange={(e: any) => {
                   const value = +e.target.value;
                   if (value > montantNet) {
                     setShowMontantWarning(true);
@@ -562,13 +553,8 @@ export default function NouvelleCommande({ onCancel }: any) {
                 }}
               />
               {showMontantWarning && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 flex items-start gap-2">
-                  <span className="text-lg">⚠️</span>
-                  <span>
-                    Le montant payé ne peut pas dépasser le total net à payer. 
-                    <br />
-                    <strong>Montant ajusté à : {montantNet.toLocaleString()} FCFA</strong>
-                  </span>
+                <div className="text-sm text-red-600 mt-2">
+                  ⚠️ Montant ajusté au total net.
                 </div>
               )}
             </div>
@@ -576,7 +562,6 @@ export default function NouvelleCommande({ onCancel }: any) {
         )}
       </Card>
 
-      {/* BOUTON DE SOUMISSION */}
       <Button
         className={`w-full py-3 text-lg ${
           loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
@@ -584,13 +569,7 @@ export default function NouvelleCommande({ onCancel }: any) {
         onClick={handleSubmit}
         disabled={loading || articles.length === 0}
       >
-        {loading ? (
-          <>
-            <Loader2 className="animate-spin" size={20} /> Traitement...
-          </>
-        ) : (
-          "Confirmer la commande"
-        )}
+        {loading ? <Loader2 className="animate-spin" size={20} /> : "Confirmer la commande"}
       </Button>
     </div>
   );
