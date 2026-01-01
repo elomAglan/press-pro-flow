@@ -41,7 +41,7 @@ export function Layout({ children }: LayoutProps) {
 
   const handleLogout = () => {
     localStorage.clear();
-    navigate("/");
+    navigate("/login"); // Changé de "/" à "/login"
   };
 
   return (

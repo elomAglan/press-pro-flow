@@ -64,14 +64,15 @@ export function Sidebar({
       ? [
           { name: "Charges", href: "/charge", icon: Archive },
           { name: "Rapports", href: "/rapports", icon: FileText },
-          { name: "Compte", href: "/compte", icon: UserCog }, // Corrigé : /compte
+          { name: "Compte", href: "/compte", icon: UserCog },
         ]
       : []),
   ];
 
+  // --- MODIFICATION ICI ---
   const handleLogout = () => {
     localStorage.clear();
-    navigate("/");
+    navigate("/login"); // Redirige explicitement vers /login
   };
 
   const PressingLogo = () => (
@@ -86,50 +87,54 @@ export function Sidebar({
 
   return (
     <>
-      {/* HEADER MOBILE */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 py-3">
+      {/* HEADER MOBILE OPTIMISÉ */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-950/90 backdrop-blur-xl border-b border-gray-100 dark:border-gray-900 flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl w-10 h-10 flex items-center justify-center bg-blue-600 text-white shadow-lg">
+          <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
             <PressingLogo />
           </div>
           <h1 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter italic">
             {pressingName || "PressPro"}
           </h1>
         </div>
-        <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+        <button 
+          onClick={() => setIsOpen(!isOpen)} 
+          className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 active:scale-90 transition-transform"
+        >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
-      {isOpen && <div onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden" />}
+      {/* Overlay tactile */}
+      {isOpen && <div onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-300" />}
 
-      {/* SIDEBAR */}
+      {/* SIDEBAR : Suppression de h-screen pour la flexibilité mobile */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 h-screen bg-white dark:bg-gray-950 border-r border-gray-100 dark:border-gray-900 flex flex-col transition-all duration-300 lg:translate-x-0 shadow-2xl",
-          isOpen ? "translate-x-0 w-72" : "-translate-x-full lg:translate-x-0",
-          isCollapsed ? "lg:w-20" : "lg:w-72"
+          "fixed top-0 left-0 z-50 min-h-screen bg-white dark:bg-gray-950 border-r border-gray-100 dark:border-gray-900 flex flex-col transition-all duration-500 lg:translate-x-0 shadow-[20px_0_40px_rgba(0,0,0,0.02)] dark:shadow-none",
+          isOpen ? "translate-x-0 w-[280px]" : "-translate-x-full lg:translate-x-0",
+          isCollapsed ? "lg:w-24" : "lg:w-72"
         )}
       >
         {/* LOGO SECTION */}
-        <div className="p-6">
-          <div className={cn("flex items-center gap-3", isCollapsed ? "justify-center" : "")}>
-            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
+        <div className="p-8">
+          <div className={cn("flex items-center gap-4", isCollapsed ? "justify-center" : "")}>
+            <div className="h-12 w-12 rounded-[1.2rem] bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-xl shadow-blue-500/20 transition-transform hover:rotate-3">
               <PressingLogo />
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <span className="font-black text-xl text-gray-900 dark:text-white leading-none tracking-tight">
+                <span className="font-black text-xl text-gray-900 dark:text-white leading-none tracking-tighter">
                   {pressingName.split(' ')[0] || "PRO"}
                 </span>
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Management</span>
+                <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-1.5 opacity-80">System</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* NAVIGATION */}
-        <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto scrollbar-none">
+        {/* NAVIGATION SCROLLABLE */}
+        <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto scrollbar-none">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
@@ -137,19 +142,19 @@ export function Sidebar({
               onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all group relative",
+                  "flex items-center gap-4 px-4 py-4 rounded-[1.2rem] text-[13px] font-black uppercase tracking-widest transition-all group relative",
                   isActive
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white",
+                    ? "bg-blue-600 text-white shadow-xl shadow-blue-500/40"
+                    : "text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-900/50 hover:text-blue-600",
                   isCollapsed ? "justify-center px-0" : ""
                 )
               }
             >
-              <item.icon size={22} className={cn("transition-transform group-hover:scale-110", isCollapsed ? "" : "min-w-[22px]")} />
-              {!isCollapsed && <span>{item.name}</span>}
+              <item.icon size={20} className={cn("transition-all duration-300 group-hover:scale-110 group-active:scale-90", isCollapsed ? "" : "min-w-[20px]")} />
+              {!isCollapsed && <span className="truncate">{item.name}</span>}
               
               {isCollapsed && (
-                <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-xl">
+                <div className="absolute left-full ml-4 px-4 py-2 bg-gray-900 dark:bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-2xl">
                   {item.name}
                 </div>
               )}
@@ -157,28 +162,27 @@ export function Sidebar({
           ))}
         </nav>
 
-        {/* FOOTER ACTIONS */}
-        <div className="p-4 mt-auto border-t border-gray-100 dark:border-gray-900">
-          <div className={cn("flex items-center gap-2", isCollapsed ? "flex-col" : "justify-between")}>
+        {/* FOOTER ACTIONS : Plus spacieux */}
+        <div className="p-6 mt-auto bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-900">
+          <div className={cn("flex items-center gap-3", isCollapsed ? "flex-col" : "justify-between")}>
             {/* THEME TOGGLE */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:text-blue-600 border border-gray-100 dark:border-gray-800 transition-all active:scale-95"
-              title="Changer de thème"
+              className="p-3.5 rounded-2xl bg-white dark:bg-gray-900 text-gray-400 hover:text-blue-600 border border-gray-100 dark:border-gray-800 transition-all shadow-sm active:scale-90"
+              title="Thème"
             >
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
             
-            {/* LOGOUT */}
+            {/* LOGOUT : Bouton Quitter plus imposant */}
             <button
               onClick={handleLogout}
               className={cn(
-                "p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-95",
-                isCollapsed ? "" : "flex-1 flex items-center justify-center gap-2 font-bold text-sm"
+                "p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/20 text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-95 group",
+                isCollapsed ? "" : "flex-1 flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest"
               )}
-              title="Déconnexion"
             >
-              <LogOut size={20} />
+              <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
               {!isCollapsed && <span>Quitter</span>}
             </button>
           </div>
@@ -187,9 +191,9 @@ export function Sidebar({
         {/* COLLAPSE TRIGGER (Desktop) */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden lg:flex absolute -right-3 top-24 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 text-gray-400 hover:text-blue-600 shadow-md transition-all hover:scale-110"
+          className="hidden lg:flex absolute -right-3.5 top-28 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-full p-1.5 text-gray-400 hover:text-blue-600 shadow-xl transition-all hover:scale-110 z-50"
         >
-          <ChevronDown size={14} className={cn("transition-transform", isCollapsed ? "-rotate-90" : "rotate-90")} />
+          <ChevronDown size={14} className={cn("transition-transform duration-500", isCollapsed ? "-rotate-90" : "rotate-90")} />
         </button>
       </aside>
     </>
