@@ -396,7 +396,7 @@ export default function Dashboard() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
         <StatCard
           title="CA Journalier"
-          value={data.caJournalier}
+          value= {0}
           icon={DollarSign}
           iconColor="text-green-600"
           unit="FCFA"
