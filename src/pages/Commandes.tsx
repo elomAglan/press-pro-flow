@@ -22,6 +22,7 @@ interface Commande {
   dateReception?: string;
   dateLivraison?: string;
   statut?: string;
+  montantPaye?:Number;
 }
 
 export default function Commandes() {
@@ -183,6 +184,7 @@ export default function Commandes() {
                 <th className="px-4 py-2 text-left dark:text-gray-100">Client</th>
                 <th className="px-4 py-2 text-left dark:text-gray-100">QT</th>
                 <th className="px-4 py-2 text-right dark:text-gray-100">Net</th>
+                <th className="px-4 py-2 text-right dark:text-gray-100">Payé</th>
                 <th className="px-4 py-2 text-left dark:text-gray-100">Livraison</th>
                 <th className="px-4 py-2 text-left dark:text-gray-100">Statut</th>
                 <th className="px-4 py-2 text-center dark:text-gray-100">Détails</th>
@@ -201,6 +203,9 @@ export default function Commandes() {
                     <td className="px-4 py-2">{c.articles?.length ?? 0}</td>
                     <td className="px-4 py-2 text-right">
                       {c.montantNetTotal?.toLocaleString("fr-FR") ?? "0"}
+                    </td>
+                     <td className="px-4 py-2 text-right">
+                      {c.montantPaye?.toLocaleString("fr-FR") ?? "0"}
                     </td>
                     <td className="px-4 py-2">{c.dateLivraison ?? ""}</td>
                     <td className="px-4 py-2">
